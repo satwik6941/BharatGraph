@@ -1,3 +1,10 @@
 PyMuPDF
 pytesseract
 Pillow
+langchain
+langchain-community
+openai
+python-dotenv
+neo4j
+langchain-huggingface
+sentence-transformers
