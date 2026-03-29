@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Path to your PDF
 documents_dir = Path("documents")
-outputs_dir = Path("outputs")
+outputs_dir = Path("extracted_outputs")
 
 outputs_dir.mkdir(exist_ok=True)
 
