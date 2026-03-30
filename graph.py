@@ -2,8 +2,7 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 from langchain_community.graphs import Neo4jGraph
-from langchain_community.vectorstores import Neo4jVector
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import warnings
 warnings.filterwarnings("ignore")
@@ -67,9 +66,8 @@ kg.query("""
 
 print(kg.query("SHOW INDEXES"))
 
-embedding_model = HuggingFaceEmbeddings(
-    model_name="intfloat/multilingual-e5-large",
-    model_kwargs={"device": "cuda"},
+embedding_model = OllamaEmbeddings(
+    model="bge-m3",
 )
 
 # Generate embeddings locally and store in Neo4j
@@ -80,7 +78,7 @@ chunks_without_embeddings = kg.query("""
 
 for chunk in chunks_without_embeddings:
     # multilingual-e5 expects "query: " or "passage: " prefix
-    vector = embedding_model.embed_query("passage: " + chunk["text"])
+    vector = embedding_model.embed_query(chunk["text"])
     kg.query("""
         MATCH (c:Chunk {chunkId: $chunkId})
         CALL db.create.setNodeVectorProperty(c, "textEmbedding", $vector)
@@ -93,7 +91,7 @@ print(kg.schema)
 
 def neo4j_vector_search(question):
   """Search for similar nodes using the Neo4j vector index"""
-  question_embedding = embedding_model.embed_query("query: " + question)
+  question_embedding = embedding_model.embed_query(question)
   vector_search_query = """
     CALL db.index.vector.queryNodes($index_name, $top_k, $embedding) yield node, score
     RETURN score, node.text AS text

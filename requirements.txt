@@ -7,4 +7,5 @@ openai
 python-dotenv
 neo4j
 langchain-huggingface
+langchain-ollama
 sentence-transformers
