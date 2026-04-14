@@ -1,7 +1,7 @@
 import os
 import json
 import re
-import requests
+import ollama
 from dotenv import load_dotenv
 from langchain_community.graphs import Neo4jGraph
 import warnings
@@ -16,7 +16,6 @@ kg = Neo4jGraph(
     database=os.getenv("NEO4J_DATABASE"),
 )
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "gemma3:12b"
 
 # ── Prompt template for entity-relationship extraction ──
@@ -39,19 +38,18 @@ def extract_relationships(text: str) -> list[dict]:
     """Use gemma3:12b via Ollama to extract entity-relationship triples."""
     prompt = EXTRACTION_PROMPT.format(text=text[:1500])
 
-    response = requests.post(OLLAMA_URL, json={
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
+    response = ollama.generate(
+        model=MODEL_NAME,
+        prompt=prompt,
+        format="json",
+        options={
             "temperature": 0.3,
             "top_p": 0.9,
             "num_predict": 512,
         },
-        "format": "json",
-    })
+    )
 
-    generated = response.json().get("response", "")
+    generated = response.response
 
     # DEBUG: Print what the model outputs
     print(f"  [DEBUG] Model output: {generated[:300]}")
@@ -92,12 +90,11 @@ MERGE (c)-[:HAS_ENTITY]->(e2)
 RETURN e1, r, e2
 """
 
-# ── Fetch first 50 chunks ──
+# ── Fetch all chunks ──
 chunks = kg.query("""
     MATCH (c:Chunk)
     RETURN c.chunkId AS chunkId, c.text AS text
     ORDER BY c.chunkSeqId
-    LIMIT 50
 """)
 
 print(f"Processing {len(chunks)} chunks for relationship extraction...\n")
