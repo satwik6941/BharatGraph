@@ -10,3 +10,4 @@ langchain-huggingface
 langchain-ollama
 sentence-transformers
 ollama
+neo4j-graphrag
