@@ -9,7 +9,7 @@ from neo4j_graphrag.retrievers import VectorCypherRetriever
 from neo4j_graphrag.llm import OllamaLLM, OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 from neo4j_graphrag.embeddings.base import Embedder
-from langchain_ollama import OllamaEmbeddings
+from sentence_transformers import SentenceTransformer
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -56,14 +56,14 @@ def stop_logging():
         print(f"\nResults saved to: {OUTPUT_FILE}")
 
 
-# ── Wrap langchain OllamaEmbeddings so neo4j-graphrag can use it ──
-class BgeM3Embedder(Embedder):
-    """Adapts LangChain OllamaEmbeddings (bge-m3) to neo4j-graphrag's Embedder interface."""
+# ── Wrap Vyakyarth SentenceTransformer so neo4j-graphrag can use it ──
+class VyakyarthEmbedder(Embedder):
+    """Adapts SentenceTransformer (Vyakyarth) to neo4j-graphrag's Embedder interface."""
     def __init__(self):
-        self._model = OllamaEmbeddings(model="bge-m3")
+        self._model = SentenceTransformer("krutrim-ai-labs/Vyakyarth")
 
     def embed_query(self, text: str) -> list[float]:
-        return self._model.embed_query(text)
+        return self._model.encode(text).tolist()
 
 
 # ── Neo4j direct driver (required by neo4j-graphrag) ──
@@ -73,7 +73,7 @@ driver = neo4j.GraphDatabase.driver(
 )
 DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
-embedder = BgeM3Embedder()
+embedder = VyakyarthEmbedder()
 
 # ── Cypher traversal run after vector search finds the top-k Chunk nodes ──
 # `node` = the matched Chunk node, `score` = cosine similarity score

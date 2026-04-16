@@ -81,7 +81,7 @@ def remove_ocr_noise(text: str) -> str:
         ratio = devanagari_letters / total_chars
         if len(stripped) < 5 and ratio < 0.8:
             continue
-        if len(stripped) >= 5 and ratio < 0.4:
+        if len(stripped) >= 5 and ratio < 0.6:
             continue
         cleaned_lines.append(stripped)
     return '\n'.join(cleaned_lines)
