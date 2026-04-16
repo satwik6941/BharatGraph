@@ -1,0 +1,95 @@
+Looking at the retrieved chunk texts for each question:
+
+Q1 — कम्प्यूटर शब्द उत्पत्ति
+
+Chunk [1]: Table of contents (विषय-सूची) — ❌ irrelevant
+Chunk [2]: CPU description — ❌ irrelevant
+Chunk [3]: Input/output devices — ❌ irrelevant
+Chunk [4]: Mouse description — ❌ irrelevant
+Chunk [5]: Windows versions — ❌ irrelevant
+Verdict: ❌ All 5 chunks are wrong — none contain the Compute etymology sentence. Answer was hallucinated.
+
+Q2 — हार्डवेयर vs सॉफ्टवेयर
+
+Chunk [1]: Spreadsheet/Excel topics — ❌ irrelevant
+Chunk [2]: Mouse, monitor hardware — ⚠️ partially related
+Chunk [3]: RAM description — ⚠️ partially related
+Chunk [4]: BIOS/POST process — ⚠️ partially related
+Chunk [5]: Science chapter (metals) — ❌ irrelevant
+Verdict: ⚠️ Weak — no chunk directly defines hardware vs software. Answer came from GPT-4o's own knowledge.
+
+Q3 — संविधान कब अंगीकृत
+
+Chunk [1]: Preamble text — ✅ relevant
+Chunk [2]: "26 नवंबर, 949 को अंगीकृत" — ✅ direct answer
+Chunk [3]: Preamble again — ✅ relevant
+Chunk [4]: "26 नवंबर, 949 को अंगीकृत" — ✅ direct answer
+Chunk [5]: Constitution fundamental duties — ✅ relevant
+Verdict: ✅ Excellent — multiple chunks directly contain the answer.
+
+Q4 — NCF-2005 शिक्षक भूमिका
+
+Chunk [1]: "जिज्ञासा बनाए रखे, अभिव्यक्ति का अवसर, अनुभवों का सम्मान" — ✅ direct answer
+Chunk [2]: Author credits page — ❌ irrelevant
+Chunk [3]: NCF-2005 preface — ✅ relevant
+Chunk [4]: NCF-2005 preface — ✅ relevant
+Chunk [5]: NCF-2005 preface — ✅ relevant
+Verdict: ✅ Good — 4 out of 5 chunks relevant.
+
+Q5 — कोठारी आयोग 1964-66
+
+Chunk [1]: Higher education expenditure statistics — ❌ irrelevant
+Chunk [2]: School enrollment budget (6-14 age group) — ❌ irrelevant
+Chunk [3]: D.L.Ed. cover page — ❌ irrelevant
+Chunk [4]: Author credits — ❌ irrelevant
+Chunk [5]: D.L.Ed. cover page — ❌ irrelevant
+Verdict: ❌ All 5 chunks are wrong — the sentence "कोठारी आयोग (64-66) से यह बात की जाने लगी थी कि शिक्षकों को पेशेवर तैयार करना जरूरी है" exists in doc2 but wasn't retrieved. Answer was correct purely by GPT-4o's own knowledge.
+
+Q6 — सी.पी.यू. के तीन भाग
+
+Chunk [1]: "सी.पी.यू. के तीन भाग: नियंत्रक इकाई, ALU, मुख्य मेमोरी" — ✅ direct answer
+Chunk [2]: Excel/spreadsheet — ❌ irrelevant
+Chunk [3]: Input/output devices — ⚠️ partially related
+Chunk [4]: Nervous system (biology) — ❌ irrelevant
+Chunk [5]: Human brain (biology) — ❌ irrelevant
+Verdict: ✅ Acceptable — Chunk [1] alone was sufficient and directly contained the answer.
+
+Q7 — उद्देशिका में न्याय
+
+Chunk [1]: Preamble "सामाजिक, आर्थिक और राजनैतिक न्याय" — ✅ direct answer
+Chunk [2]: Constitution fundamental duties — ✅ relevant
+Chunk [3]: Preamble again — ✅ direct answer
+Chunk [4]: D.L.Ed. cover — ❌ irrelevant
+Chunk [5]: Constitution NCERT page — ✅ relevant
+Verdict: ✅ Good — 4 out of 5 chunks relevant.
+
+Q8 — 42वाँ संशोधन
+
+Chunk [1]: Preamble (post-amendment version) — ⚠️ shows result but not the amendment itself
+Chunk [2]: D.L.Ed. cover — ❌ irrelevant
+Chunk [3]: "26 नवंबर, 949 को अंगीकृत" — ⚠️ related to constitution but not amendment
+Chunk [4]: Constitution fundamental duties — ⚠️ related
+Chunk [5]: Preamble — ⚠️ shows result but not amendment details
+Verdict: ⚠️ Weak — the actual footnote chunk containing "बयालीसवां संशोधन अधिनियम, 976 की धारा 2 द्वारा समाजवादी पंथनिरपेक्ष प्रतिस्थापित" from doc1 lines 36-39 was not retrieved. Answer was inferred by GPT-4o.
+
+Q9 — D.L.Ed. बदलाव
+
+Chunk [1]: "शिक्षक शिक्षा पाठ्यक्रम की पुनः समीक्षा, D.L.Ed. में बदलाव" — ✅ direct answer
+Chunk [2]: Delhi university professors list — ❌ irrelevant
+Chunk [3]: Online education — ⚠️ loosely related
+Chunk [4]: Science education professors — ❌ irrelevant
+Chunk [5]: "बोझ की समस्या, बच्चों का मनोविज्ञान" — ✅ relevant
+Verdict: ✅ Good — chunks [1] and [5] directly support the answer.
+
+Overall Retrieval Score
+#	Good Chunks	Verdict
+Q1	0/5	❌
+Q2	2/5	⚠️
+Q3	5/5	✅
+Q4	4/5	✅
+Q5	0/5	❌
+Q6	1/5	✅ (sufficient)
+Q7	4/5	✅
+Q8	1/5	⚠️
+Q9	2/5	✅
+Q1 and Q5 have zero relevant chunks — these need the top_k increased or the questions rephrased to match how the content was chunked. For example Q5 the word "कोठारी" likely sits inside a larger chunk that the vector search isn't scoring highly because those chunks are dominated by other content.
