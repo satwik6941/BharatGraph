@@ -5,7 +5,7 @@ from pathlib import Path
 
 import neo4j
 from dotenv import load_dotenv
-from neo4j_graphrag.retrievers import VectorCypherRetriever
+from neo4j_graphrag.retrievers import HybridCypherRetriever
 from neo4j_graphrag.llm import OllamaLLM, OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 from neo4j_graphrag.embeddings.base import Embedder
@@ -79,11 +79,23 @@ embedder = VyakyarthEmbedder()
 # `node` = the matched Chunk node, `score` = cosine similarity score
 # We expand from Chunk → Entity → RELATES_TO → Entity to get graph context
 RETRIEVAL_QUERY = """
-// Collect entities linked to this chunk
+// Collect entities linked to this chunk — skip god nodes (degree > 50)
 OPTIONAL MATCH (node)-[:HAS_ENTITY]->(e:Entity)
+WHERE NOT EXISTS {
+    MATCH (e)-[gn:RELATES_TO]-()
+    WITH count(gn) AS degree
+    WHERE degree > 50
+    RETURN degree
+}
 
-// Collect all relationships those entities participate in
+// Collect relationships, also skipping god-node targets
 OPTIONAL MATCH (e)-[r:RELATES_TO]->(e2:Entity)
+WHERE NOT EXISTS {
+    MATCH (e2)-[gn2:RELATES_TO]-()
+    WITH count(gn2) AS degree
+    WHERE degree > 50
+    RETURN degree
+}
 
 RETURN
     score,
@@ -98,10 +110,11 @@ RETURN
     })                                          AS triples
 """
 
-# ── VectorCypherRetriever: official Neo4j GraphRAG retriever ──
-retriever = VectorCypherRetriever(
+# ── HybridCypherRetriever: vector + fulltext (BM25) search combined ──
+retriever = HybridCypherRetriever(
     driver=driver,
-    index_name="hindi_chunks",
+    vector_index_name="hindi_chunks",
+    fulltext_index_name="hindi_chunks_fulltext",
     retrieval_query=RETRIEVAL_QUERY,
     embedder=embedder,
     neo4j_database=DATABASE,
@@ -239,7 +252,7 @@ if __name__ == "__main__":
     for level, question in questions:
         print(f"\n{'═' * 60}")
         print(f"[{level}]")
-        graph_rag_query(rag, question, top_k=5)
+        graph_rag_query(rag, question, top_k=10)
         print()
 
     driver.close()

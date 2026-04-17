@@ -111,6 +111,8 @@ for i, chunk in enumerate(chunks):
         continue
 
     for triple in triples:
+        if not triple.get("entity1") or not triple.get("entity2") or not triple.get("relationship"):
+            continue
         entity1 = triple["entity1"].strip()
         entity2 = triple["entity2"].strip()
         relationship = triple["relationship"].strip()

@@ -84,6 +84,13 @@ kg.query(f"""
     }} }}
 """)
 print(f"Vector index created with {EMBEDDING_DIM} dimensions.")
+
+# ── Create fulltext index for hybrid (BM25) search ──
+kg.query("""
+    CREATE FULLTEXT INDEX hindi_chunks_fulltext IF NOT EXISTS
+    FOR (c:Chunk) ON EACH [c.text]
+""")
+print("Fulltext index created.")
 print(kg.query("SHOW INDEXES"))
 
 # ── Generate and store Vyakyarth embeddings ──
