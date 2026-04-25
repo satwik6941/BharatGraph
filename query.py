@@ -5,11 +5,11 @@ from pathlib import Path
 
 import neo4j
 from dotenv import load_dotenv
-from neo4j_graphrag.retrievers import VectorCypherRetriever
+from neo4j_graphrag.retrievers import HybridCypherRetriever
 from neo4j_graphrag.llm import OllamaLLM, OpenAILLM
 from neo4j_graphrag.generation import GraphRAG
 from neo4j_graphrag.embeddings.base import Embedder
-from langchain_ollama import OllamaEmbeddings
+from sentence_transformers import SentenceTransformer
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -56,40 +56,73 @@ def stop_logging():
         print(f"\nResults saved to: {OUTPUT_FILE}")
 
 
-# ── Wrap langchain OllamaEmbeddings so neo4j-graphrag can use it ──
-class BgeM3Embedder(Embedder):
-    """Adapts LangChain OllamaEmbeddings (bge-m3) to neo4j-graphrag's Embedder interface."""
+# ── Vyakyarth embedder (multilingual Indic, from Krutrim AI Labs) ──
+class VyakyarthEmbedder(Embedder):
     def __init__(self):
-        self._model = OllamaEmbeddings(model="bge-m3")
+        self._model = SentenceTransformer("krutrim-ai-labs/Vyakyarth")
 
     def embed_query(self, text: str) -> list[float]:
-        return self._model.embed_query(text)
+        return self._model.encode(text).tolist()
 
 
-# ── Neo4j direct driver (required by neo4j-graphrag) ──
+# ── Neo4j direct driver ──
 driver = neo4j.GraphDatabase.driver(
     os.getenv("NEO4J_URI"),
     auth=(os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD")),
 )
 DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
-embedder = BgeM3Embedder()
+embedder = VyakyarthEmbedder()
 
-# ── Cypher traversal run after vector search finds the top-k Chunk nodes ──
-# `node` = the matched Chunk node, `score` = cosine similarity score
-# We expand from Chunk → Entity → RELATES_TO → Entity to get graph context
+# ── Language selection ──
+SUPPORTED_LANGUAGES = {
+    "1": "hindi",
+    "2": "marathi",
+    "3": "telugu",
+}
+
+
+def select_language() -> str:
+    print("\n── Select Query Language ──")
+    for key, lang in SUPPORTED_LANGUAGES.items():
+        print(f"  [{key}] {lang.capitalize()}")
+    while True:
+        choice = input("\nEnter choice (1/2/3): ").strip()
+        if choice in SUPPORTED_LANGUAGES:
+            return SUPPORTED_LANGUAGES[choice]
+        print("  Invalid choice. Enter 1, 2, or 3.")
+
+
+# ── Cypher traversal — language-filtered ──
+# $language is injected per query via retriever_config["query_params"]
 RETRIEVAL_QUERY = """
-// Collect entities linked to this chunk
-OPTIONAL MATCH (node)-[:HAS_ENTITY]->(e:Entity)
+// Only consider chunks in the requested language
+WHERE node.language = $language
 
-// Collect all relationships those entities participate in
+// Collect entities linked to this chunk — skip god nodes (degree > 50)
+OPTIONAL MATCH (node)-[:HAS_ENTITY]->(e:Entity)
+WHERE NOT EXISTS {
+    MATCH (e)-[gn:RELATES_TO]-()
+    WITH count(gn) AS degree
+    WHERE degree > 50
+    RETURN degree
+}
+
+// Collect relationships, also skipping god-node targets
 OPTIONAL MATCH (e)-[r:RELATES_TO]->(e2:Entity)
+WHERE NOT EXISTS {
+    MATCH (e2)-[gn2:RELATES_TO]-()
+    WITH count(gn2) AS degree
+    WHERE degree > 50
+    RETURN degree
+}
 
 RETURN
     score,
     node.text                                   AS chunkText,
     node.chunkId                                AS chunkId,
     node.source                                 AS source,
+    node.language                               AS language,
     collect(DISTINCT e.name)                    AS entities,
     collect(DISTINCT {
         from: e.name,
@@ -98,10 +131,11 @@ RETURN
     })                                          AS triples
 """
 
-# ── VectorCypherRetriever: official Neo4j GraphRAG retriever ──
-retriever = VectorCypherRetriever(
+# ── HybridCypherRetriever: vector + BM25 combined ──
+retriever = HybridCypherRetriever(
     driver=driver,
-    index_name="hindi_chunks",
+    vector_index_name="hindi_chunks",
+    fulltext_index_name="hindi_chunks_fulltext",
     retrieval_query=RETRIEVAL_QUERY,
     embedder=embedder,
     neo4j_database=DATABASE,
@@ -149,20 +183,16 @@ def select_llm() -> object:
         )
 
 
-def graph_rag_query(rag: GraphRAG, question: str, top_k: int = 5) -> str:
-    """
-    Run a GraphRAG query:
-    1. Embeds the question with bge-m3
-    2. VectorCypherRetriever finds top-k similar Chunk nodes via the vector index
-    3. For each chunk, the RETRIEVAL_QUERY expands to entities + relationship triples
-    4. All context (triples + text) is passed to the selected LLM to generate an answer
-    """
+def graph_rag_query(rag: GraphRAG, question: str, language: str, top_k: int = 10) -> str:
     print(f"\nQuestion: {question}")
     print("─" * 60)
 
     result = rag.search(
         query_text=question,
-        retriever_config={"top_k": top_k},
+        retriever_config={
+            "top_k": top_k,
+            "query_params": {"language": language},
+        },
         return_context=True,
     )
 
@@ -176,7 +206,7 @@ def graph_rag_query(rag: GraphRAG, question: str, top_k: int = 5) -> str:
     return result.answer
 
 
-# ── Graph statistics (uses driver directly) ──
+# ── Graph statistics ──
 def graph_stats():
     print("\n── Graph Statistics ──")
     with driver.session(database=DATABASE) as session:
@@ -190,57 +220,106 @@ def graph_stats():
             n = session.run(cypher).single()["n"]
             print(f"  {label:<12} {n}")
 
-
-def top_entities(limit: int = 15):
-    print(f"\n── Top {limit} Most Connected Entities ──")
+    # Language breakdown
+    print("\n── Chunks by Language ──")
     with driver.session(database=DATABASE) as session:
         rows = session.run("""
-            MATCH (e:Entity)
+            MATCH (c:Chunk)
+            RETURN c.language AS language, count(c) AS chunks
+            ORDER BY chunks DESC
+        """)
+        for r in rows:
+            print(f"  {r['language']:<12} {r['chunks']} chunks")
+
+
+def top_entities(language: str, limit: int = 15):
+    print(f"\n── Top {limit} Most Connected Entities [{language}] ──")
+    with driver.session(database=DATABASE) as session:
+        rows = session.run("""
+            MATCH (e:Entity {language: $language})
             OPTIONAL MATCH (e)-[r:RELATES_TO]-()
             RETURN e.name AS entity, count(r) AS connections
             ORDER BY connections DESC
             LIMIT $limit
-        """, limit=limit)
+        """, language=language, limit=limit)
         for r in rows:
             print(f"  {r['entity']:<40} {r['connections']} connections")
 
 
+# ── Sample questions per language ──
+SAMPLE_QUESTIONS = {
+    "hindi": [
+        # Easy — from NCERT Psychology (class 11) and Constitution corpus
+        ("Easy",   "संविधान की उद्देशिका में 'समाजवादी' और 'पंथनिरपेक्ष' शब्द कब जोड़े गए?"),
+        ("Easy",   "मनोविज्ञान किसे कहते हैं और इसकी मुख्य विशेषताएं क्या हैं?"),
+        ("Easy",   "भारत के संविधान को कब अंगीकृत किया गया था?"),
+        # Medium — from NCERT Psychology, NCF 2005, NCERT Science class 6–8
+        ("Medium", "NCF 2005 के अनुसार बच्चों में सीखने की प्रक्रिया को प्रभावित करने वाले कारक कौन से हैं?"),
+        ("Medium", "अधिगम (learning) क्या है और मनोविज्ञान में इसे किस प्रकार परिभाषित किया गया है?"),
+        ("Medium", "पादपों में पोषण की कौन-कौन सी विधियाँ होती हैं और स्वपोषी तथा परपोषी में क्या अंतर है?"),
+        # Hard — from NCERT Psychology, Constitution, NCERT Science
+        ("Hard",   "D.L.Ed. पाठ्यक्रम में समावेशी शिक्षा को किस प्रकार लागू किया गया है और इसके पीछे क्या दार्शनिक आधार है?"),
+        ("Hard",   "42वें संविधान संशोधन अधिनियम 1976 ने उद्देशिका में क्या परिवर्तन किए और उनका महत्त्व क्या है?"),
+        ("Hard",   "मानव स्मृति की प्रक्रिया क्या है और स्मृति के विभिन्न प्रकार एवं उनकी विशेषताएं क्या हैं?"),
+    ],
+    "marathi": [
+        # Easy — from Petroleum (Asimov) and Narsinh Mehta biography
+        ("Easy",   "खनिजतेल कशापासून तयार होते?"),
+        ("Easy",   "कार्बन आणि हायड्रोजनच्या अणूंपासून तेलाचे रेणू कसे तयार होतात?"),
+        ("Easy",   "नरसिंह मेहेता यांचा जन्म कोठे झाला आणि ते कोणत्या राजाच्या दरबारात होते?"),
+        # Medium — from Petroleum and Narsinh Mehta biography (dense coverage)
+        ("Medium", "खनिजतेलाच्या ज्वलनामुळे कोणते वायू तयार होतात आणि त्याचा पर्यावरणावर काय परिणाम होतो?"),
+        ("Medium", "खनिजतेलाचे शुद्धीकरण कसे केले जाते आणि त्यापासून कोणते उपउत्पादने मिळतात?"),
+        ("Medium", "नरसिंह मेहेता यांनी मीराबाई किंवा इतर संतांशी कसे नाते जोडले होते?"),
+        # Hard — from Petroleum and Narsinh Mehta biography (both have rich chunks)
+        ("Hard",   "नरसिंह मेहेता यांचे भक्तिमार्गातील योगदान काय होते आणि त्यांच्या जीवनातील प्रमुख घटना कोणत्या होत्या?"),
+        ("Hard",   "खनिजतेलाच्या अतिवापरामुळे भविष्यात कोणत्या समस्या निर्माण होऊ शकतात आणि पर्यायी उर्जास्रोत कोणते आहेत?"),
+        ("Hard",   "खनिजतेलाच्या शोधाचा इतिहास काय आहे आणि सुरुवातीच्या काळात त्याचा उपयोग कसा केला जात होता?"),
+    ],
+    "telugu": [
+        # Easy
+        ("Easy",   "గరుడ పురాణంలో మూడు కాండలు ఏవి?"),
+        ("Easy",   "గరుడ పురాణంలో ఆచారకాండలో ఎన్ని అధ్యాయాలు ఉన్నాయి?"),
+        ("Easy",   "గరుడ పురాణం ఏ దేవతకు సమర్పించబడింది?"),
+        # Medium
+        ("Medium", "ప్రేతకాండలో మరణానంతర ఆత్మ ప్రయాణం ఏ విధంగా వర్ణించబడింది?"),
+        ("Medium", "గరుడ పురాణంలో పురాణ పంచలక్షణాలు ఏవి మరియు ఇవి ఈ పురాణంలో ఎలా కనిపిస్తాయి?"),
+        ("Medium", "గరుడ పురాణంలో ఆచారకాండలో ఏయే విషయాలపై జ్ఞానం ఇవ్వబడింది?"),
+        # Hard
+        ("Hard",   "గరుడ పురాణం వైష్ణవ పురాణంగా ఎందుకు పరిగణించబడుతుంది మరియు ఇందులో విష్ణువు యొక్క అవతారాలు ఎలా వర్ణించబడ్డాయి?"),
+        ("Hard",   "గరుడ పురాణంలో బ్రహ్మకాండ మోక్షప్రాప్తి గురించి ఏమి చెబుతుంది మరియు మాయ, అవిద్యల పాత్ర ఏమిటి?"),
+        ("Hard",   "గరుడ పురాణంలో కర్మ సిద్ధాంతం మరియు నరక వర్ణన ఏ విధంగా జీవాత్మ మోక్షానికి సంబంధించినవి?"),
+    ],
+}
+
+
 # ── Main ──
 if __name__ == "__main__":
-    # LLM selection happens BEFORE logging starts (input() needs real stdout)
+    # Only LLM selection needed — language is iterated automatically
     llm = select_llm()
     rag = GraphRAG(retriever=retriever, llm=llm)
 
-    output_path = Path("query_results") / f"results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    output_path = Path("query_results") / f"results_all_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     start_logging(output_path)
 
     graph_stats()
-    top_entities()
 
     print("\n" + "=" * 60)
-    print("GRAPHRAG QUERY RESULTS")
+    print("GRAPHRAG QUERY RESULTS — ALL LANGUAGES")
     print("=" * 60)
 
-    questions = [
-        # Easy
-        ("Easy",   "कम्प्यूटर शब्द की उत्पत्ति किस अंग्रेजी शब्द से हुई है?"),
-        ("Easy",   "हार्डवेयर और सॉफ्टवेयर में क्या अंतर है?"),
-        ("Easy",   "भारत के संविधान को कब अंगीकृत किया गया था?"),
-        # Medium
-        ("Medium", "राष्ट्रीय पाठ्यचर्या की रूपरेखा 2005 के अनुसार शिक्षक की भूमिका क्या है?"),
-        ("Medium", "कोठारी आयोग 1964-66 ने शिक्षा के बारे में क्या कहा था?"),
-        ("Medium", "सी.पी.यू. के तीन मुख्य भाग कौन से हैं?"),
-        # Hard
-        ("Hard",   "भारत के संविधान की उद्देशिका में कौन-से न्याय का उल्लेख है?"),
-        ("Hard",   "42वें संविधान संशोधन अधिनियम 1976 ने उद्देशिका में क्या परिवर्तन किए?"),
-        ("Hard",   "D.L.Ed. पाठ्यक्रम में क्या बदलाव किए गए और उनके पीछे क्या कारण थे?"),
-    ]
+    for language in SUPPORTED_LANGUAGES.values():
+        print(f"\n{'█' * 60}")
+        print(f"  LANGUAGE: {language.upper()}")
+        print(f"{'█' * 60}")
 
-    for level, question in questions:
-        print(f"\n{'═' * 60}")
-        print(f"[{level}]")
-        graph_rag_query(rag, question, top_k=5)
-        print()
+        top_entities(language)
+
+        for level, question in SAMPLE_QUESTIONS[language]:
+            print(f"\n{'═' * 60}")
+            print(f"[{language.upper()} — {level}]")
+            graph_rag_query(rag, question, language=language, top_k=10)
+            print()
 
     driver.close()
     stop_logging()
