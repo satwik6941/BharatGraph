@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   Design system: scholarly Indian manuscript meets modern tech
+   Saffron + deep indigo on warm parchment. HSL only.
+   ───────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* Surfaces — warm parchment */
+    --background: 38 40% 96%;
+    --foreground: 230 35% 12%;
+
+    --card: 36 45% 98%;
+    --card-foreground: 230 35% 12%;
+
+    --popover: 36 45% 98%;
+    --popover-foreground: 230 35% 12%;
+
+    /* Primary — deep indigo (ink) */
+    --primary: 232 55% 22%;
+    --primary-foreground: 38 50% 97%;
+    --primary-glow: 232 65% 38%;
+
+    /* Secondary — soft sand */
+    --secondary: 36 30% 90%;
+    --secondary-foreground: 230 35% 18%;
+
+    --muted: 36 25% 92%;
+    --muted-foreground: 230 15% 40%;
+
+    /* Accent — saffron */
+    --accent: 24 90% 55%;
+    --accent-foreground: 38 50% 98%;
+    --accent-glow: 35 95% 62%;
+
+    /* Gold — secondary accent */
+    --gold: 42 80% 52%;
+    --gold-foreground: 230 35% 12%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 38 50% 98%;
+
+    --border: 36 20% 84%;
+    --input: 36 20% 88%;
+    --ring: 232 55% 35%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(232 55% 14%) 0%, hsl(232 55% 22%) 50%, hsl(255 45% 28%) 100%);
+    --gradient-saffron: linear-gradient(135deg, hsl(24 90% 55%) 0%, hsl(35 95% 62%) 100%);
+    --gradient-ink: linear-gradient(180deg, hsl(232 55% 22%) 0%, hsl(232 55% 14%) 100%);
+    --gradient-parchment: linear-gradient(180deg, hsl(38 40% 96%) 0%, hsl(36 35% 92%) 100%);
+    --gradient-text: linear-gradient(135deg, hsl(24 90% 55%), hsl(42 80% 52%));
+
+    /* Shadows */
+    --shadow-soft: 0 2px 8px -2px hsl(230 35% 12% / 0.06), 0 4px 16px -4px hsl(230 35% 12% / 0.04);
+    --shadow-elevated: 0 8px 24px -8px hsl(230 35% 12% / 0.12), 0 16px 48px -16px hsl(232 55% 22% / 0.18);
+    --shadow-glow-saffron: 0 0 40px -8px hsl(24 90% 55% / 0.45);
+    --shadow-glow-indigo: 0 0 60px -10px hsl(232 65% 38% / 0.55);
+    --shadow-inset-paper: inset 0 1px 2px hsl(36 30% 80% / 0.4);
+
+    /* Motion */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Sidebar (kept) */
+    --sidebar-background: 36 45% 98%;
+    --sidebar-foreground: 230 35% 18%;
+    --sidebar-primary: 232 55% 22%;
+    --sidebar-primary-foreground: 38 50% 97%;
+    --sidebar-accent: 36 30% 92%;
+    --sidebar-accent-foreground: 230 35% 18%;
+    --sidebar-border: 36 20% 84%;
+    --sidebar-ring: 232 55% 35%;
+  }
+
+  .dark {
+    --background: 232 40% 8%;
+    --foreground: 38 40% 94%;
+    --card: 232 35% 11%;
+    --card-foreground: 38 40% 94%;
+    --popover: 232 35% 11%;
+    --popover-foreground: 38 40% 94%;
+    --primary: 35 95% 62%;
+    --primary-foreground: 232 40% 8%;
+    --primary-glow: 24 90% 55%;
+    --secondary: 232 30% 16%;
+    --secondary-foreground: 38 40% 94%;
+    --muted: 232 25% 14%;
+    --muted-foreground: 36 15% 65%;
+    --accent: 24 90% 55%;
+    --accent-foreground: 38 50% 98%;
+    --gold: 42 80% 52%;
+    --gold-foreground: 232 40% 8%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 38 50% 98%;
+    --border: 232 25% 18%;
+    --input: 232 25% 18%;
+    --ring: 35 95% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv01", "cv02";
+    background-image:
+      radial-gradient(circle at 20% 0%, hsl(24 90% 55% / 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 100%, hsl(232 55% 22% / 0.05) 0%, transparent 50%);
+  }
+
+  /* Subtle paper grain texture */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0 0.15 0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  ::selection {
+    background: hsl(var(--accent) / 0.25);
+    color: hsl(var(--primary));
+  }
+}
+
+@layer utilities {
+  .font-devanagari {
+    font-family: 'Tiro Devanagari Hindi', 'Inter', serif;
+  }
+  .font-display {
+    font-family: 'Tiro Devanagari Hindi', 'Inter', serif;
+    font-style: italic;
+    letter-spacing: -0.02em;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .gradient-text {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .bg-hero {
+    background: var(--gradient-hero);
+  }
+  .bg-saffron {
+    background: var(--gradient-saffron);
+  }
+  .bg-parchment {
+    background: var(--gradient-parchment);
+  }
+
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-glow-saffron { box-shadow: var(--shadow-glow-saffron); }
+  .shadow-glow-indigo { box-shadow: var(--shadow-glow-indigo); }
+
+  .transition-smooth { transition: all 0.4s var(--ease-smooth); }
+  .transition-spring { transition: all 0.5s var(--ease-spring); }
+
+  /* Decorative thin divider */
+  .divider-ornament {
+    background-image: linear-gradient(90deg, transparent, hsl(var(--accent) / 0.5), transparent);
+    height: 1px;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+  .ink-card {
+    background: var(--gradient-ink);
+    color: hsl(var(--primary-foreground));
+    border: 1px solid hsl(var(--primary-glow) / 0.3);
+  }
+}
