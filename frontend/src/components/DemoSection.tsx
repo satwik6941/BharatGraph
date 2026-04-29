@@ -36,50 +36,6 @@ const SAMPLE_DOC: MockDoc = {
   relations: 89,
 };
 
-const SAMPLE_QUESTIONS = [
-  "मौलिक अधिकार और मौलिक कर्तव्य में क्या संबंध है?",
-  "अनुच्छेद 14 की व्याख्या किस अनुच्छेद से जुड़ी है?",
-  "संविधान सभा के अध्यक्ष कौन थे और उन्होंने क्या भूमिका निभाई?",
-];
-
-const SAMPLE_ANSWER: MockAnswer = {
-  question: "मौलिक अधिकार और मौलिक कर्तव्य में क्या संबंध है?",
-  answer:
-    "मौलिक अधिकार (अनुच्छेद 12–35) और मौलिक कर्तव्य (अनुच्छेद 51A) भारतीय संविधान के दो पूरक स्तंभ हैं। जहाँ मौलिक अधिकार नागरिकों को राज्य के विरुद्ध संरक्षण देते हैं, वहीं मौलिक कर्तव्य प्रत्येक नागरिक से राष्ट्र के प्रति निष्ठा और संविधान के आदर्शों के पालन की अपेक्षा करते हैं। 42वें संविधान संशोधन (1976) के माध्यम से जोड़े गए मौलिक कर्तव्य, स्वर्ण सिंह समिति की सिफारिश पर आधारित थे और इनका उद्देश्य अधिकारों के साथ-साथ ज़िम्मेदारियों का संतुलन स्थापित करना था।",
-  entities: [
-    "मौलिक अधिकार",
-    "मौलिक कर्तव्य",
-    "अनुच्छेद 51A",
-    "42वाँ संशोधन",
-    "स्वर्ण सिंह समिति",
-  ],
-  citations: [
-    {
-      doc: "भारत_का_संविधान.pdf",
-      page: 23,
-      snippet:
-        "भाग III में वर्णित मौलिक अधिकार राज्य की शक्तियों पर सीमा आरोपित करते हैं…",
-    },
-    {
-      doc: "भारत_का_संविधान.pdf",
-      page: 87,
-      snippet:
-        "अनुच्छेद 51A के अनुसार प्रत्येक नागरिक का यह कर्तव्य होगा कि वह संविधान का पालन करे…",
-    },
-    {
-      doc: "भारत_का_संविधान.pdf",
-      page: 112,
-      snippet:
-        "42वें संशोधन (1976) के द्वारा भाग IV-A जोड़ा गया जिसमें दस मौलिक कर्तव्य सम्मिलित किए गए…",
-    },
-  ],
-  hops: [
-    { from: "मौलिक अधिकार", rel: "पूरक है", to: "मौलिक कर्तव्य" },
-    { from: "मौलिक कर्तव्य", rel: "जोड़ा गया", to: "42वाँ संशोधन" },
-    { from: "42वाँ संशोधन", rel: "सिफारिश", to: "स्वर्ण सिंह समिति" },
-  ],
-};
-
 export const DemoSection = () => {
   const [stage, setStage] = useState<Stage>("idle");
   const [doc, setDoc] = useState<MockDoc | null>(null);
@@ -100,21 +56,6 @@ export const DemoSection = () => {
     setStage("thinking");
     setStreamed("");
     setAnswer(null);
-
-    // Simulate token-by-token streaming
-    setTimeout(() => {
-      const chars = SAMPLE_ANSWER.answer.split("");
-      let i = 0;
-      const id = setInterval(() => {
-        i += Math.max(2, Math.floor(Math.random() * 5));
-        setStreamed(chars.slice(0, i).join(""));
-        if (i >= chars.length) {
-          clearInterval(id);
-          setAnswer(SAMPLE_ANSWER);
-          setStage("answered");
-        }
-      }, 28);
-    }, 900);
   };
 
   return (

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import heroGraph from "@/assets/hero-graph.jpg";
 import { ArrowRight, Sparkles } from "lucide-react";
 
@@ -52,13 +53,13 @@ export const Hero = () => {
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-up"
             style={{ animationDelay: "0.3s" }}
           >
-            <a
-              href="#demo"
+            <Link
+              to="/chat"
               className="group inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-elevated hover:shadow-glow-indigo hover:-translate-y-0.5 transition-spring"
             >
               Try the live demo
               <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-smooth" />
-            </a>
+            </Link>
             <a
               href="#pipeline"
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 backdrop-blur px-6 py-3 text-sm font-medium text-foreground hover:bg-card hover:border-primary/30 transition-smooth"
