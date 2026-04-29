@@ -118,81 +118,82 @@ export const DemoSection = () => {
   };
 
   return (
-    <section id="demo" className="relative py-24 md:py-32">
-      <div className="container">
-        <SectionHeader
-          eyebrow="Live Demo"
-          devanagari="प्रदर्शन"
-          title="Upload a document. Ask anything."
-          description="A walkthrough using sample Hindi text. Click below to simulate the full pipeline — ingestion, graph construction, and hybrid retrieval."
-        />
+    console.log("DemoSection rendered with stage:", stage)
+  //   <section id="demo" className="relative py-24 md:py-32">
+  //     <div className="container">
+  //       <SectionHeader
+  //         eyebrow="Live Demo"
+  //         devanagari="प्रदर्शन"
+  //         title="Upload a document. Ask anything."
+  //         description="A walkthrough using sample Hindi text. Click below to simulate the full pipeline — ingestion, graph construction, and hybrid retrieval."
+  //       />
 
-        <div className="mt-14 grid lg:grid-cols-5 gap-6">
-          {/* Left: upload + doc info */}
-          <div className="lg:col-span-2 space-y-4">
-            <UploadCard stage={stage} doc={doc} onUpload={simulateUpload} />
-            {doc && <DocStatsCard doc={doc} />}
-          </div>
+  //       <div className="mt-14 grid lg:grid-cols-5 gap-6">
+  //         {/* Left: upload + doc info */}
+  //         <div className="lg:col-span-2 space-y-4">
+  //           <UploadCard stage={stage} doc={doc} onUpload={simulateUpload} />
+  //           {doc && <DocStatsCard doc={doc} />}
+  //         </div>
 
-          {/* Right: chat / answer */}
-          <div className="lg:col-span-3">
-            <div className="glass-card rounded-2xl shadow-elevated overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-border/60 bg-secondary/40 px-5 py-3">
-                <div className="flex gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-gold/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary-glow/60" />
-                </div>
-                <span className="ml-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Hybrid Graph-RAG · Chat
-                </span>
-              </div>
+  //         {/* Right: chat / answer */}
+  //         <div className="lg:col-span-3">
+  //           <div className="glass-card rounded-2xl shadow-elevated overflow-hidden">
+  //             <div className="flex items-center gap-2 border-b border-border/60 bg-secondary/40 px-5 py-3">
+  //               <div className="flex gap-1.5">
+  //                 <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
+  //                 <span className="h-2.5 w-2.5 rounded-full bg-gold/80" />
+  //                 <span className="h-2.5 w-2.5 rounded-full bg-primary-glow/60" />
+  //               </div>
+  //               <span className="ml-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+  //                 Hybrid Graph-RAG · Chat
+  //               </span>
+  //             </div>
 
-              <div className="p-6 min-h-[480px] flex flex-col">
-                {stage === "idle" && <EmptyChatState />}
+  //             <div className="p-6 min-h-[480px] flex flex-col">
+  //               {stage === "idle" && <EmptyChatState />}
 
-                {stage === "ready" && (
-                  <ReadyState onAsk={askQuestion} questions={SAMPLE_QUESTIONS} />
-                )}
+  //               {stage === "ready" && (
+  //                 <ReadyState onAsk={askQuestion} questions={SAMPLE_QUESTIONS} />
+  //               )}
 
-                {(stage === "thinking" || stage === "answered") && (
-                  <AnswerView
-                    question={question}
-                    streamed={streamed}
-                    answer={answer}
-                    isStreaming={stage === "thinking"}
-                    onAskAnother={() => setStage("ready")}
-                  />
-                )}
+  //               {(stage === "thinking" || stage === "answered") && (
+  //                 <AnswerView
+  //                   question={question}
+  //                   streamed={streamed}
+  //                   answer={answer}
+  //                   isStreaming={stage === "thinking"}
+  //                   onAskAnother={() => setStage("ready")}
+  //                 />
+  //               )}
 
-                {stage === "uploading" && <UploadingChatState />}
-              </div>
+  //               {stage === "uploading" && <UploadingChatState />}
+  //             </div>
 
-              {/* Input bar (visual only) */}
-              <div className="border-t border-border/60 bg-secondary/30 p-3">
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-inner">
-                  <input
-                    disabled
-                    placeholder={
-                      stage === "ready" || stage === "answered"
-                        ? "अपना प्रश्न यहाँ लिखें… (Type your question)"
-                        : "Upload a document to begin…"
-                    }
-                    className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none font-devanagari"
-                  />
-                  <button
-                    disabled
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary text-primary-foreground opacity-50"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+  //             {/* Input bar (visual only) */}
+  //             <div className="border-t border-border/60 bg-secondary/30 p-3">
+  //               <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-inner">
+  //                 <input
+  //                   disabled
+  //                   placeholder={
+  //                     stage === "ready" || stage === "answered"
+  //                       ? "अपना प्रश्न यहाँ लिखें… (Type your question)"
+  //                       : "Upload a document to begin…"
+  //                   }
+  //                   className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none font-devanagari"
+  //                 />
+  //                 <button
+  //                   disabled
+  //                   className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary text-primary-foreground opacity-50"
+  //                 >
+  //                   <Send className="h-3.5 w-3.5" />
+  //                 </button>
+  //               </div>
+  //             </div>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   </section>
   );
 };
 

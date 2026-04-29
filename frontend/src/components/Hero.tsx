@@ -26,7 +26,7 @@ export const Hero = () => {
 
           {/* Devanagari headline */}
           <h1 className="mt-8 font-devanagari text-5xl md:text-7xl lg:text-8xl text-primary leading-[1.05] animate-fade-up">
-            ज्ञान<span className="gradient-text">सेतु</span>
+            Bharat<span className="gradient-text">Graph</span>
           </h1>
 
           {/* English subhead */}
@@ -77,9 +77,9 @@ export const Hero = () => {
             </span>
             <div className="flex flex-wrap items-center gap-2">
               <LangChip label="हिन्दी" sublabel="Hindi" active />
-              <LangChip label="தமிழ்" sublabel="Tamil" />
-              <LangChip label="বাংলা" sublabel="Bengali" />
-              <LangChip label="తెలుగు" sublabel="Telugu" />
+              <LangChip label="తెలుగు" sublabel="Telugu" active />
+              <LangChip label="मराठी" sublabel="Marathi" active />
+
             </div>
           </div>
         </div>

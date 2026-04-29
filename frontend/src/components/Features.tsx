@@ -4,7 +4,7 @@ const FEATURES = [
   {
     icon: Languages,
     title: "Indic-first NLP",
-    desc: "Built for Devanagari and Indian language morphology — not retrofitted from English models.",
+    desc: "Built for Indian languages — not retrofitted from English models.",
   },
   {
     icon: GitBranch,
@@ -20,11 +20,6 @@ const FEATURES = [
     icon: Layers,
     title: "Hybrid by default",
     desc: "Use Graph-RAG where it shines, plain RAG where it suffices. The system picks the right strategy per query.",
-  },
-  {
-    icon: Zap,
-    title: "Streaming answers",
-    desc: "Token-by-token responses with live retrieval traces — built for real-time interaction.",
   },
   {
     icon: ShieldCheck,

@@ -16,7 +16,7 @@ export const Footer = () => {
                 <Network className="h-4 w-4 text-accent-foreground" strokeWidth={2.5} />
               </div>
               <div>
-                <div className="font-devanagari text-2xl">ज्ञानसेतु</div>
+                <div className="font-devanagari text-2xl">BharatGraph</div>
                 <div className="font-mono text-[10px] uppercase tracking-widest text-primary-foreground/60">
                   Gyaansetu · Knowledge Bridge
                 </div>
@@ -25,7 +25,7 @@ export const Footer = () => {
             <p className="mt-6 max-w-lg text-primary-foreground/75 leading-relaxed">
               An academic research project on automatic knowledge graph
               construction for Indian languages. Currently optimized for Hindi,
-              with Tamil, Bengali, and Telugu on the roadmap.
+              Marathi and Telugu on the roadmap.
             </p>
             <div className="mt-8 flex items-center gap-3">
               <a
@@ -50,8 +50,8 @@ export const Footer = () => {
               </div>
               <ul className="mt-3 space-y-1.5 text-primary-foreground/75">
                 <li>Neo4j · Knowledge graph</li>
-                <li>pgvector · Embeddings</li>
-                <li>LLM · Multi-hop synthesis</li>
+                <li>Vyakyarth · Embeddings</li>
+                <li>OpenAI · Multi-hop synthesis</li>
                 <li>FastAPI · Python backend</li>
               </ul>
             </div>
@@ -61,7 +61,7 @@ export const Footer = () => {
               </div>
               <ul className="mt-3 space-y-1.5 text-primary-foreground/75 font-devanagari">
                 <li>தமிழ் — Tamil support</li>
-                <li>বাংলা — Bengali support</li>
+                <li>मराठी — Marathi support</li>
                 <li>తెలుగు — Telugu support</li>
               </ul>
             </div>
@@ -69,7 +69,7 @@ export const Footer = () => {
         </div>
 
         <div className="mt-16 pt-6 border-t border-primary-foreground/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-primary-foreground/50 font-mono uppercase tracking-widest">
-          <span>© {new Date().getFullYear()} Gyaansetu Research</span>
+          <span>© {new Date().getFullYear()} BharatGraph Research</span>
           <span className="font-devanagari normal-case tracking-normal text-sm text-primary-foreground/70 italic">
             "विद्या ददाति विनयम्"
           </span>

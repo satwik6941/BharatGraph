@@ -11,7 +11,7 @@ export const Navbar = () => {
             <div className="absolute -inset-0.5 rounded-lg bg-saffron opacity-0 group-hover:opacity-30 blur transition-smooth" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-devanagari text-lg text-primary">ज्ञानसेतु</span>
+            <span className="font-devanagari text-lg text-primary">BharatGraph</span>
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Gyaansetu</span>
           </div>
         </a>
