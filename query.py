@@ -65,15 +65,6 @@ class VyakyarthEmbedder(Embedder):
         return self._model.encode(text).tolist()
 
 
-# ── Neo4j direct driver ──
-driver = neo4j.GraphDatabase.driver(
-    os.getenv("NEO4J_URI"),
-    auth=(os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD")),
-)
-DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
-
-embedder = VyakyarthEmbedder()
-
 # ── Language selection ──
 SUPPORTED_LANGUAGES = {
     "1": "hindi",
@@ -131,15 +122,31 @@ RETURN
     })                                          AS triples
 """
 
-# ── HybridCypherRetriever: vector + BM25 combined ──
-retriever = HybridCypherRetriever(
-    driver=driver,
-    vector_index_name="hindi_chunks",
-    fulltext_index_name="hindi_chunks_fulltext",
-    retrieval_query=RETRIEVAL_QUERY,
-    embedder=embedder,
-    neo4j_database=DATABASE,
-)
+
+# ── Factory: builds driver + retriever + rag, called once at startup ──
+def build_rag(llm) -> tuple[GraphRAG, neo4j.Driver, str]:
+    """
+    Creates and returns (rag, driver, database).
+    Callers that need driver for graph_stats / top_entities
+    should keep the returned driver reference.
+    """
+    database = os.getenv("NEO4J_DATABASE", "neo4j")
+    driver = neo4j.GraphDatabase.driver(
+        os.getenv("NEO4J_URI"),
+        auth=(os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD")),
+    )
+    embedder = VyakyarthEmbedder()
+    retriever = HybridCypherRetriever(
+        driver=driver,
+        vector_index_name="hindi_chunks",
+        fulltext_index_name="hindi_chunks_fulltext",
+        retrieval_query=RETRIEVAL_QUERY,
+        embedder=embedder,
+        neo4j_database=database,
+    )
+    rag = GraphRAG(retriever=retriever, llm=llm)
+    return rag, driver, database
+
 
 # ── LLM options ──
 LLM_OPTIONS = {
@@ -206,10 +213,10 @@ def graph_rag_query(rag: GraphRAG, question: str, language: str, top_k: int = 10
     return result.answer
 
 
-# ── Graph statistics ──
-def graph_stats():
+# ── Graph statistics — accept driver + database explicitly ──
+def graph_stats(driver: neo4j.Driver, database: str):
     print("\n── Graph Statistics ──")
-    with driver.session(database=DATABASE) as session:
+    with driver.session(database=database) as session:
         counts = {
             "Chunks":     "MATCH (c:Chunk) RETURN count(c) AS n",
             "Entities":   "MATCH (e:Entity) RETURN count(e) AS n",
@@ -220,9 +227,8 @@ def graph_stats():
             n = session.run(cypher).single()["n"]
             print(f"  {label:<12} {n}")
 
-    # Language breakdown
     print("\n── Chunks by Language ──")
-    with driver.session(database=DATABASE) as session:
+    with driver.session(database=database) as session:
         rows = session.run("""
             MATCH (c:Chunk)
             RETURN c.language AS language, count(c) AS chunks
@@ -232,9 +238,9 @@ def graph_stats():
             print(f"  {r['language']:<12} {r['chunks']} chunks")
 
 
-def top_entities(language: str, limit: int = 15):
+def top_entities(driver: neo4j.Driver, database: str, language: str, limit: int = 15):
     print(f"\n── Top {limit} Most Connected Entities [{language}] ──")
-    with driver.session(database=DATABASE) as session:
+    with driver.session(database=database) as session:
         rows = session.run("""
             MATCH (e:Entity {language: $language})
             OPTIONAL MATCH (e)-[r:RELATES_TO]-()
@@ -249,43 +255,34 @@ def top_entities(language: str, limit: int = 15):
 # ── Sample questions per language ──
 SAMPLE_QUESTIONS = {
     "hindi": [
-        # Easy — from NCERT Psychology (class 11) and Constitution corpus
         ("Easy",   "संविधान की उद्देशिका में 'समाजवादी' और 'पंथनिरपेक्ष' शब्द कब जोड़े गए?"),
         ("Easy",   "मनोविज्ञान किसे कहते हैं और इसकी मुख्य विशेषताएं क्या हैं?"),
         ("Easy",   "भारत के संविधान को कब अंगीकृत किया गया था?"),
-        # Medium — from NCERT Psychology, NCF 2005, NCERT Science class 6–8
         ("Medium", "NCF 2005 के अनुसार बच्चों में सीखने की प्रक्रिया को प्रभावित करने वाले कारक कौन से हैं?"),
         ("Medium", "अधिगम (learning) क्या है और मनोविज्ञान में इसे किस प्रकार परिभाषित किया गया है?"),
         ("Medium", "पादपों में पोषण की कौन-कौन सी विधियाँ होती हैं और स्वपोषी तथा परपोषी में क्या अंतर है?"),
-        # Hard — from NCERT Psychology, Constitution, NCERT Science
         ("Hard",   "D.L.Ed. पाठ्यक्रम में समावेशी शिक्षा को किस प्रकार लागू किया गया है और इसके पीछे क्या दार्शनिक आधार है?"),
         ("Hard",   "42वें संविधान संशोधन अधिनियम 1976 ने उद्देशिका में क्या परिवर्तन किए और उनका महत्त्व क्या है?"),
         ("Hard",   "मानव स्मृति की प्रक्रिया क्या है और स्मृति के विभिन्न प्रकार एवं उनकी विशेषताएं क्या हैं?"),
     ],
     "marathi": [
-        # Easy — from Petroleum (Asimov) and Narsinh Mehta biography
         ("Easy",   "खनिजतेल कशापासून तयार होते?"),
         ("Easy",   "कार्बन आणि हायड्रोजनच्या अणूंपासून तेलाचे रेणू कसे तयार होतात?"),
         ("Easy",   "नरसिंह मेहेता यांचा जन्म कोठे झाला आणि ते कोणत्या राजाच्या दरबारात होते?"),
-        # Medium — from Petroleum and Narsinh Mehta biography (dense coverage)
         ("Medium", "खनिजतेलाच्या ज्वलनामुळे कोणते वायू तयार होतात आणि त्याचा पर्यावरणावर काय परिणाम होतो?"),
         ("Medium", "खनिजतेलाचे शुद्धीकरण कसे केले जाते आणि त्यापासून कोणते उपउत्पादने मिळतात?"),
         ("Medium", "नरसिंह मेहेता यांनी मीराबाई किंवा इतर संतांशी कसे नाते जोडले होते?"),
-        # Hard — from Petroleum and Narsinh Mehta biography (both have rich chunks)
         ("Hard",   "नरसिंह मेहेता यांचे भक्तिमार्गातील योगदान काय होते आणि त्यांच्या जीवनातील प्रमुख घटना कोणत्या होत्या?"),
         ("Hard",   "खनिजतेलाच्या अतिवापरामुळे भविष्यात कोणत्या समस्या निर्माण होऊ शकतात आणि पर्यायी उर्जास्रोत कोणते आहेत?"),
         ("Hard",   "खनिजतेलाच्या शोधाचा इतिहास काय आहे आणि सुरुवातीच्या काळात त्याचा उपयोग कसा केला जात होता?"),
     ],
     "telugu": [
-        # Easy
         ("Easy",   "గరుడ పురాణంలో మూడు కాండలు ఏవి?"),
         ("Easy",   "గరుడ పురాణంలో ఆచారకాండలో ఎన్ని అధ్యాయాలు ఉన్నాయి?"),
         ("Easy",   "గరుడ పురాణం ఏ దేవతకు సమర్పించబడింది?"),
-        # Medium
         ("Medium", "ప్రేతకాండలో మరణానంతర ఆత్మ ప్రయాణం ఏ విధంగా వర్ణించబడింది?"),
         ("Medium", "గరుడ పురాణంలో పురాణ పంచలక్షణాలు ఏవి మరియు ఇవి ఈ పురాణంలో ఎలా కనిపిస్తాయి?"),
         ("Medium", "గరుడ పురాణంలో ఆచారకాండలో ఏయే విషయాలపై జ్ఞానం ఇవ్వబడింది?"),
-        # Hard
         ("Hard",   "గరుడ పురాణం వైష్ణవ పురాణంగా ఎందుకు పరిగణించబడుతుంది మరియు ఇందులో విష్ణువు యొక్క అవతారాలు ఎలా వర్ణించబడ్డాయి?"),
         ("Hard",   "గరుడ పురాణంలో బ్రహ్మకాండ మోక్షప్రాప్తి గురించి ఏమి చెబుతుంది మరియు మాయ, అవిద్యల పాత్ర ఏమిటి?"),
         ("Hard",   "గరుడ పురాణంలో కర్మ సిద్ధాంతం మరియు నరక వర్ణన ఏ విధంగా జీవాత్మ మోక్షానికి సంబంధించినవి?"),
@@ -295,14 +292,13 @@ SAMPLE_QUESTIONS = {
 
 # ── Main ──
 if __name__ == "__main__":
-    # Only LLM selection needed — language is iterated automatically
     llm = select_llm()
-    rag = GraphRAG(retriever=retriever, llm=llm)
+    rag, driver, database = build_rag(llm)
 
     output_path = Path("query_results") / f"results_all_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     start_logging(output_path)
 
-    graph_stats()
+    graph_stats(driver, database)
 
     print("\n" + "=" * 60)
     print("GRAPHRAG QUERY RESULTS — ALL LANGUAGES")
@@ -313,7 +309,7 @@ if __name__ == "__main__":
         print(f"  LANGUAGE: {language.upper()}")
         print(f"{'█' * 60}")
 
-        top_entities(language)
+        top_entities(driver, database, language)
 
         for level, question in SAMPLE_QUESTIONS[language]:
             print(f"\n{'═' * 60}")

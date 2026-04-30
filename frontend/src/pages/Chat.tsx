@@ -1,34 +1,77 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Send, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Loader2, FileText } from "lucide-react";
 
 type Stage = "ready" | "thinking" | "answered";
 
-interface Message {
-  role: "user" | "assistant";
+interface Chunk {
+  score: number;
+  text: string;
+  source: string;
+}
+
+interface AssistantMessage {
+  role: "assistant";
+  answer: string;
+  language: string;
+  chunks: Chunk[];
+}
+
+interface UserMessage {
+  role: "user";
   text: string;
 }
+
+type Message = UserMessage | AssistantMessage;
+
+const LANG_LABEL: Record<string, string> = {
+  hindi: "हिन्दी · Hindi",
+  marathi: "मराठी · Marathi",
+  telugu: "తెలుగు · Telugu",
+};
 
 const Chat = () => {
   const [stage, setStage] = useState<Stage>("ready");
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
 
-  const askQuestion = (q: string) => {
+  const askQuestion = async (q: string) => {
     setMessages((prev) => [...prev, { role: "user", text: q }]);
     setInputValue("");
     setStage("thinking");
 
-    setTimeout(() => {
+    try {
+      const res = await fetch("http://localhost:8000/api/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: "Backend connection not yet wired. Your question has been received and will be processed once the API is connected.",
+          answer: data.answer,
+          language: data.language,
+          chunks: data.chunks,
         },
       ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          answer: `Error: could not reach the backend. (${err})`,
+          language: "unknown",
+          chunks: [],
+        },
+      ]);
+    } finally {
       setStage("answered");
-    }, 1200);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,41 +125,111 @@ const Chat = () => {
             </div>
 
             {/* Chat body */}
-            <div className="p-6 flex-1 overflow-y-auto min-h-[420px] flex flex-col gap-4">
+            <div className="p-6 flex-1 overflow-y-auto min-h-[420px] flex flex-col gap-6">
+
+              {/* Empty state */}
               {messages.length === 0 && (
                 <div className="m-auto text-center max-w-sm flex flex-col items-center justify-center h-full">
                   <div className="mx-auto h-12 w-12 rounded-full bg-secondary flex items-center justify-center mb-4">
                     <Sparkles className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <p className="font-display text-xl text-foreground/70">
-                    Ask anything
-                  </p>
+                  <p className="font-display text-xl text-foreground/70">Ask anything</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Type a question in Hindi, Marathi, or Telugu below. BharatGraph
-                    will retrieve answers using hybrid vector and graph search.
+                    Type a question in Hindi, Marathi, or Telugu. BharatGraph will
+                    detect the language automatically and retrieve answers using
+                    hybrid vector and graph search.
                   </p>
                 </div>
               )}
 
+              {/* Message thread */}
               {messages.map((msg, i) =>
                 msg.role === "user" ? (
+                  /* ── User bubble ── */
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-sm text-primary-foreground font-devanagari shadow-soft">
+                    <div className="max-w-[75%] rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-sm text-primary-foreground font-devanagari shadow-soft">
                       {msg.text}
                     </div>
                   </div>
                 ) : (
+                  /* ── Assistant response ── */
                   <div key={i} className="flex gap-3">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-saffron flex items-center justify-center shadow-glow-saffron">
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-saffron flex items-center justify-center shadow-glow-saffron mt-1">
                       <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
                     </div>
-                    <div className="flex-1 rounded-2xl rounded-tl-sm bg-secondary/60 border border-border/50 px-4 py-3 text-sm leading-relaxed text-foreground font-devanagari">
-                      {msg.text}
+
+                    <div className="flex-1 space-y-4 min-w-0">
+
+                      {/* Language badge */}
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/8 px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest text-accent">
+                        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                        {LANG_LABEL[msg.language] ?? msg.language}
+                      </div>
+
+                      {/* Retrieved chunks */}
+                      {msg.chunks.length > 0 && (
+                        <div>
+                          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                            Retrieved context — {msg.chunks.length} chunk{msg.chunks.length !== 1 ? "s" : ""}
+                          </p>
+                          <div className="space-y-2">
+                            {msg.chunks.map((chunk, ci) => (
+                              <div
+                                key={ci}
+                                className="rounded-lg border border-border bg-card/60 p-3 space-y-2"
+                              >
+                                {/* Score row */}
+                                <div className="flex items-center gap-3">
+                                  <span className="font-mono text-[10px] text-muted-foreground w-4">{ci + 1}</span>
+                                  <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full ${
+                                        chunk.score >= 0.95
+                                          ? "bg-accent"
+                                          : chunk.score >= 0.85
+                                          ? "bg-yellow-400"
+                                          : "bg-muted-foreground/50"
+                                      }`}
+                                      style={{ width: `${chunk.score * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-mono text-[11px] text-foreground/70 tabular-nums w-12 text-right">
+                                    {chunk.score.toFixed(4)}
+                                  </span>
+                                </div>
+
+                                {/* Chunk text */}
+                                <p className="text-xs text-foreground/80 font-devanagari leading-relaxed line-clamp-3">
+                                  {chunk.text}
+                                </p>
+
+                                {/* Source */}
+                                <div className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/70">
+                                  <FileText className="h-3 w-3" />
+                                  {chunk.source}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Final answer */}
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                          Answer
+                        </p>
+                        <div className="rounded-2xl rounded-tl-sm bg-secondary/60 border border-border/50 px-4 py-3 text-sm leading-relaxed text-foreground font-devanagari whitespace-pre-wrap">
+                          {msg.answer}
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 )
               )}
 
+              {/* Thinking indicator */}
               {stage === "thinking" && (
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 h-8 w-8 rounded-full bg-saffron flex items-center justify-center">
@@ -127,6 +240,7 @@ const Chat = () => {
                   </div>
                 </div>
               )}
+
             </div>
 
             {/* Input bar */}
@@ -148,10 +262,14 @@ const Chat = () => {
                   disabled={!canType || !inputValue.trim()}
                   className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-smooth"
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  {stage === "thinking"
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Send className="h-3.5 w-3.5" />
+                  }
                 </button>
               </form>
             </div>
+
           </div>
         </div>
       </div>

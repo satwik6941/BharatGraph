@@ -12,3 +12,5 @@ sentence-transformers
 ollama
 neo4j-graphrag
 langdetect
+fastapi 
+uvicorn
