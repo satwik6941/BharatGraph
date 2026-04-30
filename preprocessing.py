@@ -2,150 +2,139 @@ import re
 import unicodedata
 from pathlib import Path
 
-# Devanagari Unicode ranges
-DEVANAGARI_RANGE = '\u0900-\u097F'
+# Unicode script ranges
+DEVANAGARI_RANGE = 'ऀ-ॿ'   # Hindi + Marathi
+TELUGU_RANGE     = 'ఀ-౿'   # Telugu
 DEVANAGARI_DIGITS = '०१२३४५६७८९'
-ARABIC_DIGITS = '0123456789'
+ARABIC_DIGITS     = '0123456789'
+DIGIT_TRANS = str.maketrans(DEVANAGARI_DIGITS, ARABIC_DIGITS)
 
-# Hindi stopwords
 HINDI_STOPWORDS = {
-    # Postpositions
     'में', 'से', 'को', 'का', 'की', 'के', 'पर', 'तक', 'ने', 'द्वारा',
-    # Pronouns
     'यह', 'वह', 'इस', 'उस', 'जो', 'कोई', 'कुछ', 'मैं', 'हम', 'तुम',
     'आप', 'वे', 'ये', 'इन', 'उन',
-    # Auxiliary verbs
     'है', 'हैं', 'था', 'थी', 'थे', 'थीं', 'हो', 'होता', 'होती', 'होते',
     'हुआ', 'हुई', 'हुए', 'रहा', 'रही', 'रहे', 'सकता', 'सकती', 'सकते',
     'जाता', 'जाती', 'जाते',
-    # Conjunctions and particles
     'और', 'या', 'लेकिन', 'परन्तु', 'किन्तु', 'तो', 'भी', 'ही',
     'न', 'नहीं', 'अगर', 'क्योंकि', 'कि', 'जब', 'तब', 'जैसे', 'फिर',
     'अभी', 'कब', 'कहाँ',
-    # Determiners
     'एक', 'कई', 'सब', 'सभी', 'कम', 'ज्यादा', 'बहुत', 'अधिक',
-    # Others
     'इसलिए', 'इसके', 'उसके', 'अपने', 'अपना', 'अपनी', 'साथ', 'बाद',
     'पहले', 'दूसरे', 'ऐसे', 'वैसे', 'कहा', 'दिया', 'दी', 'लिया',
     'लिए', 'किया', 'करके', 'तथा', 'एवं', 'व',
 }
 
-# Devanagari digit translation table
-DIGIT_TRANS = str.maketrans(DEVANAGARI_DIGITS, ARABIC_DIGITS)
+
+def _script_range(language: str) -> str:
+    if language == "telugu":
+        return TELUGU_RANGE
+    return DEVANAGARI_RANGE  # hindi and marathi both use Devanagari
 
 
 def normalize_unicode(text: str) -> str:
-    """NFC normalization to merge decomposed characters."""
     return unicodedata.normalize('NFC', text)
 
 
 def remove_page_markers(text: str) -> str:
-    """Remove --- Page N --- markers inserted during OCR extraction."""
     return re.sub(r'-{2,}\s*Page\s*\d+\s*-{2,}', '', text)
 
 
 def fix_dandas(text: str) -> str:
-    """Replace misrecognized pipe | with Devanagari danda ।"""
     return text.replace('|', '।')
 
 
 def normalize_nuktas(text: str) -> str:
-    """Normalize nukta-bearing characters to base forms (except ड़ ढ़)."""
-    nukta_map = {
-        'क़': 'क', 'ख़': 'ख', 'ग़': 'ग', 'ज़': 'ज', 'फ़': 'फ',
-    }
+    nukta_map = {'क़': 'क', 'ख़': 'ख', 'ग़': 'ग', 'ज़': 'ज', 'फ़': 'फ'}
     for nukta_char, base_char in nukta_map.items():
         text = text.replace(nukta_char, base_char)
     return text
 
 
 def normalize_chandrabindu(text: str) -> str:
-    """Normalize chandrabindu (ँ) to anusvara (ं)."""
-    return text.replace('\u0901', '\u0902')
+    return text.replace('ँ', 'ं')
 
 
-def remove_ocr_noise(text: str) -> str:
-    """Remove lines that are mostly garbage (isolated chars, stray digits, symbols)."""
+def remove_ocr_noise(text: str, language: str) -> str:
+    """Remove lines that are mostly garbage, using the correct script range."""
+    script = _script_range(language)
     cleaned_lines = []
     for line in text.split('\n'):
         stripped = line.strip()
         if not stripped:
             continue
-        # Count meaningful Devanagari characters (letters, not just digits/marks)
-        devanagari_letters = len(re.findall(f'[{DEVANAGARI_RANGE}]', stripped))
+        script_letters = len(re.findall(f'[{script}]', stripped))
         total_chars = len(stripped.replace(' ', ''))
         if total_chars == 0:
             continue
-        # Keep the line only if it has enough Devanagari content
-        # Short lines need higher ratio, long lines can tolerate some noise
-        ratio = devanagari_letters / total_chars
+        ratio = script_letters / total_chars
         if len(stripped) < 5 and ratio < 0.8:
             continue
-        if len(stripped) >= 5 and ratio < 0.4:
+        if len(stripped) >= 5 and ratio < 0.6:
             continue
         cleaned_lines.append(stripped)
     return '\n'.join(cleaned_lines)
 
 
 def remove_isolated_matras(text: str) -> str:
-    """Remove vowel signs (matras) that appear without a preceding consonant."""
-    # Matras: \u093E-\u094D, \u0962-\u0963
-    # They should only appear after a consonant (\u0915-\u0939)
-    # Remove matras that appear at the start of a word or after a space
-    text = re.sub(r'(?<=\s)[\u093E-\u094D\u0962\u0963]+', '', text)
-    text = re.sub(r'^[\u093E-\u094D\u0962\u0963]+', '', text)
+    text = re.sub(r'(?<=\s)[ा-्ॢॣ]+', '', text)
+    text = re.sub(r'^[ा-्ॢॣ]+', '', text)
     return text
 
 
-def clean_punctuation(text: str) -> str:
-    """Remove stray punctuation and symbols, keep Devanagari text and dandas."""
-    # Keep: Devanagari chars, spaces, dandas, digits, basic punctuation for readability
-    text = re.sub(r'[^\u0900-\u097F\s0-9।॥,\.\-()]+', ' ', text)
+def clean_punctuation(text: str, language: str) -> str:
+    """Keep only characters from the correct script range + shared punctuation."""
+    if language == "telugu":
+        text = re.sub(r'[^ఀ-౿\s0-9।॥,\.\-()]+', ' ', text)
+    else:
+        # Devanagari — same as before
+        text = re.sub(r'[^ऀ-ॿ\s0-9।॥,\.\-()]+', ' ', text)
     return text
 
 
 def normalize_whitespace(text: str) -> str:
-    """Collapse multiple spaces/blank lines."""
     text = re.sub(r'[ \t]+', ' ', text)
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
 
 def normalize_digits(text: str) -> str:
-    """Convert Devanagari digits to Arabic digits."""
     return text.translate(DIGIT_TRANS)
 
 
 def remove_stopwords(text: str) -> str:
-    """Remove Hindi stopwords from text."""
     words = text.split()
-    filtered = [w for w in words if w not in HINDI_STOPWORDS]
-    return ' '.join(filtered)
+    return ' '.join(w for w in words if w not in HINDI_STOPWORDS)
 
 
-def preprocess(text: str, remove_stops: bool = False) -> str:
+def preprocess(text: str, language: str = "hindi", remove_stops: bool = False) -> str:
     """
-    Full preprocessing pipeline for Hindi OCR text.
-
-    Args:
-        text: Raw OCR text
-        remove_stops: Whether to remove stopwords.
-                      Set False if feeding to an LLM (it needs context words).
-                      Set True if doing keyword-based NLP.
+    Full preprocessing pipeline, language-aware.
+    language: 'hindi' | 'marathi' | 'telugu'
     """
     text = normalize_unicode(text)
     text = remove_page_markers(text)
-    text = fix_dandas(text)
-    text = normalize_nuktas(text)
-    text = normalize_chandrabindu(text)
-    text = remove_isolated_matras(text)
-    text = remove_ocr_noise(text)
-    text = clean_punctuation(text)
+    if language in ("hindi", "marathi"):
+        text = fix_dandas(text)
+        text = normalize_nuktas(text)
+        text = normalize_chandrabindu(text)
+        text = remove_isolated_matras(text)
+    text = remove_ocr_noise(text, language)
+    text = clean_punctuation(text, language)
     text = normalize_digits(text)
     text = normalize_whitespace(text)
-    if remove_stops:
+    if remove_stops and language == "hindi":
         text = remove_stopwords(text)
     return text
+
+
+def _filename_to_language(stem: str) -> str:
+    stem_lower = stem.lower()
+    if "marathi" in stem_lower:
+        return "marathi"
+    if "telugu" in stem_lower:
+        return "telugu"
+    return "hindi"
 
 
 if __name__ == "__main__":
@@ -159,12 +148,12 @@ if __name__ == "__main__":
         print("No text files found in outputs directory.")
     else:
         for file in txt_files:
-            print(f"Preprocessing {file.name}...")
+            language = _filename_to_language(file.stem)
+            print(f"Preprocessing {file.name}  [language={language}]")
             with open(file, "r", encoding="utf-8") as f:
                 raw_text = f.read()
 
-            # remove_stops=False because we'll feed this to an LLM for KG extraction
-            cleaned = preprocess(raw_text, remove_stops=False)
+            cleaned = preprocess(raw_text, language=language, remove_stops=False)
 
             out_path = output_dir / file.name
             with open(out_path, "w", encoding="utf-8") as f:

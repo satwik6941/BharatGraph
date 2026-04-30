@@ -18,8 +18,9 @@ kg = Neo4jGraph(
 
 MODEL_NAME = "gemma3:12b"
 
-# ── Prompt template for entity-relationship extraction ──
-EXTRACTION_PROMPT = """You are a knowledge graph extraction assistant. Extract all important entities and relationships from the following Hindi text.
+# ── Language-aware extraction prompts ──
+EXTRACTION_PROMPTS = {
+    "hindi": """You are a knowledge graph extraction assistant. Extract all important entities and relationships from the following Hindi text.
 
 Rules:
 1. Output ONLY a valid JSON array, nothing else
@@ -31,12 +32,42 @@ Rules:
 Text:
 {text}
 
-JSON Output:"""
+JSON Output:""",
+
+    "marathi": """You are a knowledge graph extraction assistant. Extract all important entities and relationships from the following Marathi text.
+
+Rules:
+1. Output ONLY a valid JSON array, nothing else
+2. Each object must have exactly 3 keys: "entity1", "relationship", "entity2"
+3. Entity names should be in Marathi (as they appear in the text)
+4. Relationship should be a short Marathi label (e.g., "ची राजधानी", "ने स्थापित केले", "चा भाग")
+5. Extract at least 3-5 relationships if possible
+
+Text:
+{text}
+
+JSON Output:""",
+
+    "telugu": """You are a knowledge graph extraction assistant. Extract all important entities and relationships from the following Telugu text.
+
+Rules:
+1. Output ONLY a valid JSON array, nothing else
+2. Each object must have exactly 3 keys: "entity1", "relationship", "entity2"
+3. Entity names should be in Telugu (as they appear in the text)
+4. Relationship should be a short Telugu label (e.g., "యొక్క రాజధాని", "స్థాపించారు", "భాగం")
+5. Extract at least 3-5 relationships if possible
+
+Text:
+{text}
+
+JSON Output:""",
+}
 
 
-def extract_relationships(text: str) -> list[dict]:
+def extract_relationships(text: str, language: str = "hindi") -> list[dict]:
     """Use gemma3:12b via Ollama to extract entity-relationship triples."""
-    prompt = EXTRACTION_PROMPT.format(text=text[:1500])
+    prompt_template = EXTRACTION_PROMPTS.get(language, EXTRACTION_PROMPTS["hindi"])
+    prompt = prompt_template.format(text=text[:1500])
 
     response = ollama.generate(
         model=MODEL_NAME,
@@ -50,14 +81,10 @@ def extract_relationships(text: str) -> list[dict]:
     )
 
     generated = response.response
-
-    # DEBUG: Print what the model outputs
     print(f"  [DEBUG] Model output: {generated[:300]}")
 
-    # Try parsing the full response as JSON first
     try:
         parsed = json.loads(generated)
-        # Handle if model wraps array in an object
         if isinstance(parsed, dict):
             for key in parsed:
                 if isinstance(parsed[key], list):
@@ -68,7 +95,6 @@ def extract_relationships(text: str) -> list[dict]:
     except json.JSONDecodeError:
         pass
 
-    # Fallback: extract JSON array from text
     json_match = re.search(r'\[.*\]', generated, re.DOTALL)
     if json_match:
         try:
@@ -79,22 +105,25 @@ def extract_relationships(text: str) -> list[dict]:
     return []
 
 
-# ── Cypher queries for creating entities and relationships ──
+# ── Cypher: language is inherited from the chunk and stored on entities + relationship ──
 merge_relationship_query = """
 MATCH (c:Chunk {chunkId: $chunkId})
 MERGE (e1:Entity {name: $entity1})
+    ON CREATE SET e1.language = $language
 MERGE (e2:Entity {name: $entity2})
+    ON CREATE SET e2.language = $language
 MERGE (e1)-[r:RELATES_TO {type: $relationship, source: $chunkId}]->(e2)
+    ON CREATE SET r.language = $language
 MERGE (c)-[:HAS_ENTITY]->(e1)
 MERGE (c)-[:HAS_ENTITY]->(e2)
 RETURN e1, r, e2
 """
 
-# ── Fetch all chunks ──
+# ── Fetch all chunks with their language ──
 chunks = kg.query("""
     MATCH (c:Chunk)
-    RETURN c.chunkId AS chunkId, c.text AS text
-    ORDER BY c.chunkSeqId
+    RETURN c.chunkId AS chunkId, c.text AS text, c.language AS language
+    ORDER BY c.language, c.chunkSeqId
 """)
 
 print(f"Processing {len(chunks)} chunks for relationship extraction...\n")
@@ -102,15 +131,18 @@ print(f"Processing {len(chunks)} chunks for relationship extraction...\n")
 total_relationships = 0
 
 for i, chunk in enumerate(chunks):
-    print(f"[{i+1}/{len(chunks)}] Processing chunk: {chunk['chunkId']}")
+    language = chunk.get("language") or "hindi"
+    print(f"[{i+1}/{len(chunks)}] Processing chunk: {chunk['chunkId']}  [lang={language}]")
 
-    triples = extract_relationships(chunk["text"])
+    triples = extract_relationships(chunk["text"], language=language)
 
     if not triples:
         print(f"  No relationships found.")
         continue
 
     for triple in triples:
+        if not triple.get("entity1") or not triple.get("entity2") or not triple.get("relationship"):
+            continue
         entity1 = triple["entity1"].strip()
         entity2 = triple["entity2"].strip()
         relationship = triple["relationship"].strip()
@@ -119,10 +151,11 @@ for i, chunk in enumerate(chunks):
             continue
 
         kg.query(merge_relationship_query, params={
-            "chunkId": chunk["chunkId"],
-            "entity1": entity1,
-            "entity2": entity2,
+            "chunkId":      chunk["chunkId"],
+            "entity1":      entity1,
+            "entity2":      entity2,
             "relationship": relationship,
+            "language":     language,
         })
         total_relationships += 1
         print(f"  ({entity1}) -[{relationship}]-> ({entity2})")
@@ -137,13 +170,12 @@ print("Entities:", kg.query("MATCH (e:Entity) RETURN count(e) AS count"))
 print("Relationships:", kg.query("MATCH ()-[r:RELATES_TO]->() RETURN count(r) AS count"))
 print("Chunk-Entity links:", kg.query("MATCH ()-[r:HAS_ENTITY]->() RETURN count(r) AS count"))
 
-# ── Sample query ──
-print("\n── Sample: Entities related to 'भारत' ──")
-results = kg.query("""
-    MATCH (e1:Entity)-[r:RELATES_TO]->(e2:Entity)
-    WHERE e1.name CONTAINS 'भारत' OR e2.name CONTAINS 'भारत'
-    RETURN e1.name AS entity1, r.type AS relationship, e2.name AS entity2
-    LIMIT 10
+# ── Language breakdown ──
+print("\n── Language breakdown ──")
+lang_stats = kg.query("""
+    MATCH (c:Chunk)
+    RETURN c.language AS language, count(c) AS chunks
+    ORDER BY chunks DESC
 """)
-for r in results:
-    print(f"  ({r['entity1']}) -[{r['relationship']}]-> ({r['entity2']})")
+for row in lang_stats:
+    print(f"  {row['language']}: {row['chunks']} chunks")
