@@ -41,11 +41,15 @@ const Chat = () => {
     setStage("thinking");
 
     try {
-      const res = await fetch("http://localhost:8000/api/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q }),
-      });
+      const apiUrl = import.meta.env.VITE_API_URL ?? "/api/query";
+      const res = await fetch(
+        apiUrl.startsWith("http") ? `${apiUrl}/api/query` : apiUrl,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: q }),
+        }
+      );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

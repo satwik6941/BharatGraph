@@ -1,6 +1,7 @@
 import re
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from neo4j_graphrag.llm import OpenAILLM
@@ -24,11 +25,6 @@ def detect_language(text: str) -> str:
 
 
 def parse_chunk(raw: str) -> dict:
-    """
-    item.content looks like:
-      <Record score=0.97 chunkText='...' chunkId='...' source='...' ...>
-    Extract score and chunkText from that string.
-    """
     score_match = re.search(r"score=([\d.]+)", raw)
     text_match  = re.search(r"chunkText='(.*?)'(?=\s+\w+=|>)", raw, re.DOTALL)
     source_match = re.search(r"source='(.*?)'", raw)
@@ -61,10 +57,35 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8080", "https://bharat-graph-nlp.vercel.app/"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "https://bharat-graph-nlp.vercel.app",
+        "https://bharatgraph-444344272640.asia-south2.run.app",
+    ],
     allow_methods=["POST"],
     allow_headers=["*"],
 )
+
+
+# ── Shared secret middleware ──
+_API_SECRET = os.environ.get("API_SECRET_KEY", "")
+
+@app.middleware("http")
+async def verify_secret(request: Request, call_next):
+    # Allow health check without auth
+    if request.url.path == "/health":
+        return await call_next(request)
+    if _API_SECRET:
+        client_secret = request.headers.get("X-Secret-Key")
+        if client_secret != _API_SECRET:
+            raise HTTPException(status_code=403, detail="Unauthorized")
+    return await call_next(request)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 class QueryRequest(BaseModel):
