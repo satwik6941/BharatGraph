@@ -58,8 +58,8 @@ for file in files.glob("*.txt"):
         separators = ["।\n", "।", "\n\n", "\n", " "]
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=1300,
+        chunk_overlap=100,
         separators=separators,
     )
     texts = text_splitter.split_text(text)

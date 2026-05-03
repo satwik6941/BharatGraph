@@ -1,0 +1,682 @@
+================================================================================
+  AUTOMATIC KNOWLEDGE GRAPH CONSTRUCTION FOR INDIAN LANGUAGES
+  Project: BharatGraph
+  Author: Sivakoti Satwik
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PROJECT OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BharatGraph is an end-to-end system that:
+
+  (a) Takes raw PDFs written in Indian languages (Hindi, Marathi, Telugu)
+  (b) Extracts and cleans the text (OCR-based)
+  (c) Automatically constructs a knowledge graph from that text
+  (d) Stores the graph in Neo4j (a graph database)
+  (e) Answers complex multi-hop questions using a Hybrid GraphRAG system
+  (f) Serves answers through a FastAPI backend + React frontend
+
+The core innovation is combining VECTOR SEARCH (semantic similarity) with GRAPH
+TRAVERSAL (entity relationships) to answer questions that require reasoning
+across multiple pieces of information — something traditional RAG cannot do well.
+
+Supported languages:
+  • Hindi    (हिन्दी)   — Devanagari script
+  • Marathi  (मराठी)    — Devanagari script
+  • Telugu   (తెలుగు)   — Telugu script
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. SYSTEM ARCHITECTURE — THE FULL PIPELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The system has two phases:
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  PHASE 1: OFFLINE INDEXING (run once, builds the knowledge base)    │
+  │                                                                      │
+  │  PDF Files                                                           │
+  │     │                                                                │
+  │     ▼  extract.py                                                   │
+  │  Raw OCR Text                                                        │
+  │     │                                                                │
+  │     ▼  preprocessing.py                                             │
+  │  Cleaned Text                                                        │
+  │     │                                                                │
+  │     ▼  graph.py                                                     │
+  │  Chunks + Embeddings → Neo4j (vector index + fulltext index)        │
+  │     │                                                                │
+  │     ▼  relationship.py                                              │
+  │  Entity-Relationship Triples → Neo4j (graph edges)                  │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  PHASE 2: ONLINE QUERYING (runs on every user question)             │
+  │                                                                      │
+  │  User Question (Hindi / Marathi / Telugu)                           │
+  │     │                                                                │
+  │     ▼  api.py — detect_language()                                   │
+  │  Language Detected                                                   │
+  │     │                                                                │
+  │     ▼  query.py — HybridCypherRetriever                            │
+  │  Vector Search + BM25 + Graph Traversal → Top 10 Chunks            │
+  │     │                                                                │
+  │     ▼  OpenAI GPT (LLM)                                            │
+  │  Final Grounded Answer                                               │
+  │     │                                                                │
+  │     ▼  React Frontend                                               │
+  │  Displayed with chunk scores + source citations                      │
+  └─────────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. FILE-BY-FILE EXPLANATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 1: extract.py  —  PDF to Raw Text (OCR)
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  Converts PDFs into raw text files using OCR (Optical Character Recognition).
+
+HOW IT WORKS:
+  1. Scans the /documents folder for all PDF files.
+  2. Detects which Indian language the PDF is in based on its filename.
+     e.g., "ncert_hindi_psychology.pdf" → Hindi, "marathi_petroleum.pdf" → Marathi
+  3. Converts each PDF page to a high-resolution image (300 DPI using PyMuPDF/fitz).
+  4. Runs Tesseract OCR on each page image with the correct language pack:
+       hin = Hindi Tesseract model
+       mar = Marathi Tesseract model
+       tel = Telugu Tesseract model
+  5. Writes all extracted text to /extracted_outputs/*.txt
+
+WHY OCR?
+  Indian language PDFs are often scanned documents (not digitally typed), so
+  the PDF contains images of pages rather than selectable text. OCR reads those
+  images and converts them to machine-readable text.
+
+KEY LIBRARIES:
+  • PyMuPDF (fitz)    — renders PDF pages as images
+  • Tesseract         — OCR engine with Indian language support
+  • Pillow (PIL)      — image handling between fitz and Tesseract
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 2: preprocessing.py  —  Text Cleaning Pipeline
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  Cleans the noisy OCR output to produce high-quality text suitable for
+  embedding and graph construction.
+
+THE PROBLEM WITH RAW OCR TEXT:
+  OCR output for Indian scripts is messy:
+    • Broken Unicode characters (NFC normalization issues)
+    • Pipe characters | mistakenly used instead of Hindi danda ।
+    • Nukta characters like ज़ that should be normalized to ज
+    • Isolated matras (vowel marks) floating without consonants
+    • Lines that are mostly garbage (low script-ratio lines)
+    • Mixed Devanagari digits (०१२) and Arabic digits (012)
+    • Excessive whitespace and page markers like "--- Page 3 ---"
+
+CLEANING STEPS (in order):
+  1. normalize_unicode()       — NFC normalization, fixes broken characters
+  2. remove_page_markers()     — strips "--- Page N ---" OCR artifacts
+  3. fix_dandas()              — replaces | with ।  (Hindi sentence delimiter)
+  4. normalize_nuktas()        — ज़ → ज, फ़ → फ, etc.
+  5. normalize_chandrabindu()  — ँ → ं  (nasal sound normalization)
+  6. remove_isolated_matras()  — removes floating vowel marks
+  7. remove_ocr_noise()        — drops lines where <60% chars are Indic script
+  8. clean_punctuation()       — language-aware: keeps only correct script range
+                                  Devanagari for Hindi/Marathi, Telugu for Telugu
+  9. normalize_digits()        — Devanagari ०–९ → Arabic 0–9
+  10. normalize_whitespace()   — collapses extra spaces and newlines
+
+LANGUAGE AWARENESS:
+  Telugu uses a completely different Unicode range (U+0C00–U+0C7F) vs
+  Devanagari (U+0900–U+097F). The cleaner uses the correct character range
+  per language to avoid wrongly deleting valid characters.
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 3: graph.py  —  Chunking, Embedding, and Neo4j Indexing
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  Splits cleaned text into chunks, generates vector embeddings using the
+  Vyakyarth multilingual model, and stores everything in Neo4j with two indexes.
+
+STEP 1 — LANGUAGE DETECTION PER CHUNK:
+  Even within a single document, the language is confirmed at the chunk level
+  using langdetect (with filename as fallback when confidence < 0.8).
+  Each chunk gets a `language` property: "hindi", "marathi", or "telugu".
+
+STEP 2 — CHUNKING:
+  Uses LangChain's RecursiveCharacterTextSplitter:
+    • chunk_size    = 1300 characters
+    • chunk_overlap = 100 characters (so context isn't lost at boundaries)
+
+  Language-aware separators:
+    • Hindi/Marathi: splits on "।\n", "।", "\n\n", "\n", " "
+                     (the danda ।  is the Indian full stop)
+    • Telugu:        splits on "\n\n", "\n", " "
+                     (Telugu uses Devanagari-style punctuation less strictly)
+
+STEP 3 — THE VYAKYARTH EMBEDDING MODEL:
+  Model: krutrim-ai-labs/Vyakyarth
+  This is a SentenceTransformer specifically trained for Indian languages.
+  It maps text to a 768-dimensional vector where semantically similar
+  sentences have vectors that are close together in vector space.
+
+  Why not use OpenAI embeddings?
+  OpenAI's embedding model (text-embedding-ada) is trained primarily on
+  English. It understands Hindi/Marathi/Telugu poorly — similar Hindi
+  sentences would get dissimilar vectors. Vyakyarth was pre-trained on a
+  large Indian-language corpus, making it far more accurate for our task.
+
+STEP 4 — NEO4J STORAGE:
+  Each chunk is stored as a (:Chunk) node with properties:
+    • chunkId    — unique identifier (e.g., "doc11_output-chunk-42")
+    • source     — original filename
+    • chunkSeqId — position in the document
+    • text       — the actual chunk text
+    • language   — "hindi" | "marathi" | "telugu"
+    • textEmbedding — 768-dim vector from Vyakyarth
+
+STEP 5 — TWO INDEXES CREATED:
+
+  a) Vector Index ("hindi_chunks"):
+     Cosine similarity index over textEmbedding vectors.
+     Used for semantic search: "find chunks whose meaning is similar to the question."
+
+  b) Fulltext Index ("hindi_chunks_fulltext"):
+     BM25-based keyword index over the text property.
+     Used for keyword search: "find chunks that contain these exact words."
+
+  Together, these two indexes power the Hybrid Retrieval in query.py.
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 4: relationship.py  —  Knowledge Graph Construction via LLM
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  This is where the "Knowledge Graph" part of the project happens.
+  An LLM (gemma3:12b running locally via Ollama) reads each chunk and
+  extracts entity-relationship triples from it.
+
+WHAT IS A TRIPLE?
+  A triple is a structured fact: (Entity1) --[Relationship]--> (Entity2)
+
+  Examples from the Hindi Constitution corpus:
+    (42वाँ संशोधन) --[जोड़ा गया]--> (मौलिक कर्तव्य)
+    (मौलिक अधिकार) --[पूरक है]-->   (मौलिक कर्तव्य)
+    (स्वर्ण सिंह समिति) --[सिफारिश]--> (मौलिक कर्तव्य)
+
+HOW IT WORKS:
+  1. Fetches every chunk from Neo4j.
+  2. For each chunk, sends it to gemma3:12b with a language-specific prompt
+     asking for entity-relationship extraction in JSON format.
+  3. The prompt instructs the model to output ONLY a JSON array of objects
+     with keys: "entity1", "relationship", "entity2".
+  4. Parses the JSON (with fallback regex extraction if JSON is malformed).
+  5. For each valid triple, runs a Cypher MERGE query that:
+       • Creates an (:Entity) node for entity1 (if not exists)
+       • Creates an (:Entity) node for entity2 (if not exists)
+       • Creates a [:RELATES_TO] edge between them with the relationship type
+       • Creates a [:HAS_ENTITY] edge from the (:Chunk) to both entities
+
+  This links chunks to the entities they mention — crucial for graph traversal.
+
+WHY LOCAL LLM (OLLAMA) INSTEAD OF OPENAI?
+  Relationship extraction runs on EVERY chunk (4000+ chunks). Using OpenAI
+  would cost significant money. A local gemma3:12b model runs free at the
+  cost of GPU time. Quality is acceptable for extraction (not generation).
+  The final answer generation (query time) uses OpenAI GPT for best quality.
+
+THE RESULTING GRAPH STRUCTURE:
+
+  (:Chunk) --[:HAS_ENTITY]--> (:Entity) --[:RELATES_TO]--> (:Entity)
+
+  This means: to answer "what is related to Entity X?", we can traverse
+  the graph from any chunk that mentions X to all connected entities,
+  enabling multi-hop reasoning.
+
+STATISTICS (from the actual run):
+  • 4,291 Chunk nodes
+  • 4,234 Entity nodes
+  • 3,967 RELATES_TO relationships
+  • 5,886 HAS_ENTITY relationships
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 5: query.py  —  The GraphRAG Query Engine
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  Implements the Hybrid GraphRAG retrieval system. Given a question, retrieves
+  the most relevant chunks using both vector similarity and keyword matching,
+  then augments the retrieval with graph context, and finally generates an
+  answer using an LLM.
+
+KEY COMPONENT — HybridCypherRetriever:
+  From the neo4j-graphrag Python library. Combines:
+
+  a) Vector Search  — finds chunks whose Vyakyarth embedding is closest to
+                      the question's embedding (cosine similarity)
+  b) BM25 Search    — finds chunks that contain the exact keywords from
+                      the question (traditional keyword matching)
+  c) Cypher Traversal — after finding matching chunks, runs a Cypher query
+                        to also pull their connected entities and relationships
+                        from the knowledge graph
+
+THE RETRIEVAL CYPHER QUERY:
+  This is the most important piece of code in the system:
+
+  WHERE node.language = $language          ← language filter
+
+  OPTIONAL MATCH (node)-[:HAS_ENTITY]->(e:Entity)
+  WHERE NOT EXISTS { degree > 50 }         ← skip "god nodes" (over-connected)
+
+  OPTIONAL MATCH (e)-[r:RELATES_TO]->(e2:Entity)
+  WHERE NOT EXISTS { degree > 50 }         ← skip god nodes again
+
+  RETURN score, chunkText, entities, triples
+
+  The "god node" filter is important: entities like "भारत" (India) or "व्यक्ति"
+  (person) appear in hundreds of chunks and are connected to 50+ other entities.
+  Including them would add noise without useful information.
+
+THE build_rag() FACTORY FUNCTION:
+  Creates the full pipeline — driver → embedder → retriever → GraphRAG —
+  as a single unit. This is imported by api.py so the expensive setup
+  (loading Vyakyarth, connecting to Neo4j) happens only once at startup.
+
+graph_rag_query():
+  Wraps rag.search() and handles logging/printing. Used by the CLI mode.
+  api.py calls rag.search() directly for more control over the output format.
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 6: api.py  —  FastAPI Web Server
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  Wraps the GraphRAG engine as an HTTP API so the React frontend can
+  call it from the browser.
+
+KEY DESIGN DECISIONS:
+
+  a) lifespan() — startup/shutdown hook:
+     Loads the LLM and calls build_rag() ONCE when the server starts.
+     All subsequent requests reuse the same _rag and _driver objects.
+     Without this, every request would reload the 400MB Vyakyarth model.
+
+  b) detect_language():
+     Uses the langdetect library to automatically detect the input language.
+     langdetect maps:
+       "hi" → "hindi"
+       "mr" → "marathi"
+       "te" → "telugu"
+     Falls back to "hindi" if detection fails.
+     This means the frontend sends ONLY the question — no language field needed.
+
+  c) parse_chunk():
+     The HybridCypherRetriever returns raw strings like:
+       <Record score=0.97 chunkText='...' source='...' ...>
+     parse_chunk() uses regex to extract score, text, and source separately
+     so the frontend can display them in a structured way.
+
+  d) CORS middleware:
+     Allows the React frontend (running on localhost:5173 or Vercel) to
+     call this API from the browser. Without CORS, browsers block
+     cross-origin requests for security.
+
+  POST /api/query:
+    Input:  { "question": "मनोविज्ञान क्या है?" }
+    Output: { "answer": "...", "language": "hindi", "chunks": [
+               { "score": 0.97, "text": "...", "source": "doc11_output.txt" },
+               ...
+             ]}
+
+────────────────────────────────────────────────────────────────────────────────
+FILE 7: frontend/src/pages/Chat.tsx  —  React Chat Interface
+────────────────────────────────────────────────────────────────────────────────
+
+PURPOSE:
+  The user-facing chat page. Sends questions to the FastAPI backend and
+  displays the structured response.
+
+STATE MACHINE:
+  stage: "ready" → "thinking" → "answered" → "ready" (on next question)
+
+  "ready"    — input enabled, user can type
+  "thinking" — fetch in progress, spinner shown, input disabled
+  "answered" — response displayed, input re-enabled
+
+MESSAGE TYPES:
+  Two distinct message interfaces:
+    UserMessage:      { role: "user", text: string }
+    AssistantMessage: { role: "assistant", answer, language, chunks[] }
+
+  This separation allows the assistant response to carry structured chunk
+  data (score, text, source) rather than just a plain string.
+
+RESPONSE DISPLAY:
+  For each assistant response:
+    1. Language badge (e.g., "हिन्दी · Hindi")
+    2. Retrieved chunks section — each chunk shows:
+         • Score bar (color-coded: green ≥0.95, amber ≥0.85, grey below)
+         • Score number (4 decimal places)
+         • Chunk text (first 3 lines, truncated)
+         • Source filename
+    3. Final Answer — the LLM-generated response
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. TRADITIONAL RAG vs GRAPH RAG — A DETAILED COMPARISON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+────────────────────────────────────────────────────────────
+TRADITIONAL RAG (Retrieval-Augmented Generation)
+────────────────────────────────────────────────────────────
+
+How it works:
+  1. Split documents into chunks.
+  2. Embed each chunk as a vector.
+  3. At query time: embed the question, find closest chunk vectors.
+  4. Send those chunks + question to an LLM.
+  5. LLM generates an answer grounded in those chunks.
+
+Data structure:
+  Flat list of vectors in a vector database (Pinecone, pgvector, etc.)
+
+Retrieval type:
+  Semantic similarity only — finds chunks that are "about the same topic."
+
+Strengths:
+  ✓ Simple to build
+  ✓ Works well for single-fact questions
+  ✓ Fast retrieval
+
+Weaknesses:
+  ✗ Cannot reason across multiple documents/chunks
+  ✗ Cannot answer "multi-hop" questions
+  ✗ No understanding of how entities relate to each other
+  ✗ Misses keyword-exact matches when semantic similarity is misleading
+
+Example failure:
+  Question: "42वें संशोधन की सिफारिश किसने की और यह किस समिति से जुड़ा है?"
+  (Who recommended the 42nd Amendment and which committee is it linked to?)
+
+  Traditional RAG would retrieve chunks about "42वाँ संशोधन" and might
+  find the amendment text, but cannot connect it to "स्वर्ण सिंह समिति"
+  unless that connection appears in the same chunk — which it often doesn't.
+
+────────────────────────────────────────────────────────────
+GRAPH RAG (BharatGraph's approach)
+────────────────────────────────────────────────────────────
+
+How it works:
+  1. Same as Traditional RAG PLUS:
+  2. Also build a knowledge graph (entities + relationships between them).
+  3. At query time: retrieve chunks via BOTH vector similarity AND BM25.
+  4. Then traverse the graph: from retrieved chunks → their entities →
+     connected entities → more chunks those entities appear in.
+  5. This pulls in information that is RELATED but not directly similar.
+  6. Send the full enriched context to the LLM.
+
+Data structure:
+  Graph database (Neo4j) with:
+    (:Chunk) nodes — text segments with vector embeddings
+    (:Entity) nodes — named entities extracted from text
+    [:RELATES_TO] edges — relationships between entities
+    [:HAS_ENTITY] edges — links chunks to the entities they mention
+
+Retrieval type:
+  Hybrid: Vector similarity + BM25 keyword + Graph traversal
+
+Strengths:
+  ✓ Multi-hop reasoning: can follow chains of relationships
+  ✓ Explicit knowledge representation: entities and their connections
+  ✓ BM25 catches exact keyword matches that semantic search misses
+  ✓ God-node filtering prevents irrelevant over-connected entities
+  ✓ Language-scoped retrieval (Hindi questions only search Hindi chunks)
+
+Weaknesses:
+  ✗ More complex to build (requires graph DB + relationship extraction)
+  ✗ Relationship extraction quality depends on the LLM used
+  ✗ Some irrelevant chunks still retrieved (precision issue)
+  ✗ Higher infrastructure cost (Neo4j + embedding model)
+
+Example success:
+  Question: "मौलिक अधिकार और मौलिक कर्तव्य में क्या संबंध है?"
+
+  Graph RAG:
+  → Vector search finds chunks about मौलिक अधिकार
+  → Graph traversal follows: मौलिक अधिकार --[पूरक है]--> मौलिक कर्तव्य
+  → That leads to chunks about मौलिक कर्तव्य
+  → Then: मौलिक कर्तव्य --[जोड़ा गया]--> 42वाँ संशोधन
+  → LLM now has a multi-hop chain of evidence
+  → Answer correctly mentions the 42nd Amendment AND Swarn Singh Committee
+
+────────────────────────────────────────────────────────────
+SIDE-BY-SIDE COMPARISON TABLE
+────────────────────────────────────────────────────────────
+
+Feature                    | Traditional RAG      | BharatGraph (Graph RAG)
+---------------------------|----------------------|---------------------------
+Data Storage               | Vector DB (flat)     | Graph DB (nodes + edges)
+Retrieval Method           | Vector similarity    | Vector + BM25 + Cypher
+Multi-hop Reasoning        | No                   | Yes
+Relationship Awareness     | No                   | Yes (RELATES_TO edges)
+Keyword Exact Match        | No                   | Yes (BM25 fulltext index)
+Language Filtering         | Manual / none        | WHERE node.language = $lang
+Entity Extraction          | Not required         | LLM-extracted at index time
+God Node Filtering         | N/A                  | degree > 50 filter
+Answer Grounding           | Chunk text only      | Chunk text + entity triples
+Build Complexity           | Low                  | High
+Query Speed                | Fast (~1-2s)         | Moderate (~10-30s)
+Best for                   | Simple factual Q&A   | Complex, multi-entity Q&A
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. METHODOLOGY — KEY TECHNICAL DECISIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Why Vyakyarth for Embeddings?
+───────────────────────────────────
+Vyakyarth (krutrim-ai-labs/Vyakyarth) is a SentenceTransformer trained
+specifically on Indian language corpora. It produces 768-dimensional vectors.
+
+Alternatives considered:
+  • OpenAI text-embedding-ada-002 — poor quality for Indic scripts
+  • multilingual-e5-large — better than OpenAI but not Indic-specific
+  • LaBSE — good multilingual but not optimized for Hindi/Marathi/Telugu
+
+Vyakyarth outperforms all of these for semantic similarity in Indic languages
+because it was fine-tuned on actual Hindi, Marathi, and Telugu text pairs.
+
+5.2 Why Neo4j?
+───────────────
+Neo4j is the leading graph database. It stores data as nodes and relationships
+(not tables), making graph traversal queries extremely efficient.
+
+The Cypher query language allows expressing complex graph patterns like:
+  "Find all entities connected to this chunk, but skip entities with more
+   than 50 connections (god nodes)"
+in a single readable query — this would require complex JOINs in SQL.
+
+5.3 Why Hybrid Retrieval (Vector + BM25)?
+──────────────────────────────────────────
+Vector search alone fails when:
+  • The question uses exact terminology that appears verbatim in the document
+  • The embedding model doesn't capture the semantics perfectly
+
+BM25 (the algorithm behind traditional search engines) catches exact matches.
+Combining both gives better recall than either alone.
+
+BM25 stands for "Best Match 25" — it ranks documents by:
+  TF (term frequency) × IDF (inverse document frequency)
+  — words that appear often in a chunk but rarely in the corpus rank higher.
+
+5.4 The God Node Problem
+──────────────────────────
+When extracting relationships, very common words become "god nodes" —
+entities connected to 50+ other entities. Examples: "भारत", "व्यक्ति", "पानी".
+
+If included in retrieval, these nodes add massive noise (every chunk that
+mentions "India" gets retrieved regardless of relevance). The Cypher query
+filters them out with: WHERE degree > 50 → skip.
+
+5.5 Language Scoping
+──────────────────────
+All chunks have a `language` property. The retrieval Cypher enforces:
+  WHERE node.language = $language
+
+This ensures a Hindi question only retrieves Hindi chunks, even though all
+languages share the same Neo4j database and vector index. Without this filter,
+a Hindi question about the Constitution might retrieve Marathi chunks about
+petroleum (which could have similar embeddings due to shared Devanagari script).
+
+5.6 Two LLMs for Different Tasks
+──────────────────────────────────
+  • Relationship Extraction (offline): gemma3:12b via Ollama (local, free)
+    Runs on thousands of chunks. Cost matters. Quality needs to be "good enough."
+
+  • Answer Generation (online, per query): OpenAI GPT (cloud, paid)
+    Runs once per user question. Quality is critical — users see this output.
+    GPT-4 class models are significantly better at Hindi/Marathi/Telugu generation.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. DATA FLOW — STEP BY STEP FOR A SINGLE QUERY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+User types: "मनोविज्ञान किसे कहते हैं?"
+
+Step 1 — LANGUAGE DETECTION (api.py)
+  langdetect("मनोविज्ञान किसे कहते हैं?") → "hi" → "hindi"
+
+Step 2 — QUESTION EMBEDDING (query.py / Vyakyarth)
+  VyakyarthEmbedder.embed_query("मनोविज्ञान किसे कहते हैं?")
+  → [0.023, -0.412, 0.871, ...] (768 numbers)
+
+Step 3 — VECTOR SEARCH (Neo4j)
+  CALL db.index.vector.queryNodes("hindi_chunks", 10, $question_vector)
+  → Returns top-10 chunks whose textEmbedding is cosine-closest to question
+
+Step 4 — BM25 SEARCH (Neo4j fulltext)
+  CALL db.index.fulltext.queryNodes("hindi_chunks_fulltext", "मनोविज्ञान")
+  → Returns chunks containing the keyword मनोविज्ञान
+
+Step 5 — HYBRID MERGE
+  HybridCypherRetriever combines both result sets (RRF or score blending)
+
+Step 6 — CYPHER GRAPH TRAVERSAL
+  For each retrieved chunk, runs RETRIEVAL_QUERY:
+    WHERE node.language = "hindi"
+    OPTIONAL MATCH chunk → entities (skipping god nodes)
+    OPTIONAL MATCH entities → related entities (skipping god nodes)
+    Returns: score, chunkText, entities[], triples[]
+
+Step 7 — CONTEXT ASSEMBLY
+  The top 10 chunks are assembled into a context string with their
+  entity lists and relationship triples appended.
+
+Step 8 — LLM GENERATION (OpenAI GPT)
+  Prompt: "Given this context: [10 chunks + entities + triples]
+           Answer this question: मनोविज्ञान किसे कहते हैं?"
+  GPT generates a grounded answer citing the retrieved information.
+
+Step 9 — RESPONSE PARSING (api.py)
+  parse_chunk() extracts score, text, source from each chunk.
+  Returns: { answer, language: "hindi", chunks: [{score, text, source}] }
+
+Step 10 — FRONTEND DISPLAY (Chat.tsx)
+  Language badge → chunk cards with score bars → final answer
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. CORPUS / DATA USED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hindi corpus (2,304 chunks):
+  • NCERT Psychology textbook (Class 11) — मनोविज्ञान की परिभाषा, स्मृति, अधिगम
+  • NCERT Science (Class 6-8) — पादप पोषण, सौर परिवार
+  • Indian Constitution (Preamble, Fundamental Rights, Duties)
+  • NCF 2005 — National Curriculum Framework
+  • D.L.Ed. curriculum (Inclusive Education)
+
+Marathi corpus (927 chunks):
+  • Petroleum / खनिजतेल (Asimov translated)
+  • Biography of Narsinh Mehta / नरसिंह मेहेता
+
+Telugu corpus (1,060 chunks):
+  • Garuda Puranam / గరుడ పురాణం
+
+Total: 4,291 chunks across 3 languages
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. LIMITATIONS AND FUTURE WORK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current Limitations:
+
+  1. Retrieval Precision:
+     Some retrieved chunks are irrelevant (e.g., Psychology chunks appear
+     for Constitution questions). Fix: add a cross-encoder reranker that
+     scores each chunk against the question before sending to the LLM.
+
+  2. Stub Chunks:
+     Some Marathi chunks contain only a title like "। खनिजतेल" — a single
+     heading with no content. These score 1.0 on BM25 (keyword matches)
+     but carry zero information. Fix: filter chunks shorter than 50 chars
+     at indexing time in graph.py.
+
+  3. Raw \n in Chunk Display:
+     The frontend shows literal "\n" characters in chunk text instead of
+     line breaks. Fix: replace "\n" with " " in parse_chunk() in api.py.
+
+  4. Language Detection Ambiguity:
+     Hindi and Marathi share the Devanagari script. langdetect sometimes
+     misidentifies one as the other. Fix: use a dedicated Hindi/Marathi
+     classifier trained on more distinctive vocabulary.
+
+  5. Cold Start Latency:
+     The Vyakyarth model takes ~10 seconds to load on first startup.
+     On Cloud Run, this causes a slow first request (cold start).
+     Fix: use Cloud Run's minimum instances = 1 to keep one instance warm.
+
+Future Improvements:
+
+  • Add more Indian languages: Tamil (தமிழ்), Kannada (ಕನ್ನಡ), Bengali (বাংলা)
+  • Cross-encoder reranker for better retrieval precision
+  • Streaming responses (SSE) so the answer appears token by token
+  • Document upload UI so users can add their own PDFs
+  • Citation highlighting — link answer sentences to specific chunk sources
+  • Graph visualization — show the entity-relationship graph visually
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. TECH STACK SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Layer               | Technology
+--------------------|------------------------------------------------------------
+PDF Extraction      | PyMuPDF (fitz) + Tesseract OCR
+Text Preprocessing  | Custom Python pipeline (Unicode, regex)
+Chunking            | LangChain RecursiveCharacterTextSplitter
+Embedding Model     | Vyakyarth (krutrim-ai-labs) — 768-dim, Indic languages
+Graph Database      | Neo4j AuraDB (cloud)
+Vector Index        | Neo4j native vector index (cosine similarity)
+Fulltext Index      | Neo4j native fulltext index (BM25)
+Graph Framework     | neo4j-graphrag Python library
+Relation Extraction | Ollama — gemma3:12b (local LLM)
+Answer Generation   | OpenAI GPT (gpt-5.4-mini-2026-03-17)
+Language Detection  | langdetect
+Web Framework       | FastAPI + Uvicorn
+Frontend            | React + Vite + TypeScript + Tailwind CSS + shadcn/ui
+Deployment          | Cloud Run (backend) + Vercel (frontend)
+
+================================================================================
+END OF DOCUMENT
+================================================================================

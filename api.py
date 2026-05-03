@@ -34,7 +34,7 @@ def parse_chunk(raw: str) -> dict:
     source_match = re.search(r"source='(.*?)'", raw)
 
     score  = float(score_match.group(1))  if score_match  else 0.0
-    text   = text_match.group(1).strip()  if text_match   else raw[:300]
+    text   = text_match.group(1).replace("\\n", " ").strip()  if text_match   else raw[:300]
     source = source_match.group(1)        if source_match else "unknown"
 
     return {"score": round(score, 4), "text": text, "source": source}
