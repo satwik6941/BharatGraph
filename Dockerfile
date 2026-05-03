@@ -15,4 +15,4 @@ COPY query.py api.py ./
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('krutrim-ai-labs/Vyakyarth')"
 
 EXPOSE 8080
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080}"]
