@@ -22,7 +22,7 @@ export const Hero = () => {
           {/* Eyebrow */}
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/5 px-3.5 py-1.5 text-xs font-medium text-accent animate-fade-in">
             <Sparkles className="h-3 w-3" />
-            <span className="font-mono uppercase tracking-widest">Hybrid Graph-RAG · Hindi-first</span>
+            <span className="font-mono uppercase tracking-widest">Hybrid Graph-RAG</span>
           </div>
 
           {/* Devanagari headline */}
@@ -35,14 +35,14 @@ export const Hero = () => {
             className="mt-6 text-2xl md:text-3xl font-display text-foreground/80 leading-snug animate-fade-up"
             style={{ animationDelay: "0.1s" }}
           >
-            A bridge between Indian languages and machine reasoning.
+            A bridge between Indian languages and Artifical Intelligence.
           </p>
 
           <p
             className="mx-auto mt-6 max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed animate-fade-up"
             style={{ animationDelay: "0.2s" }}
           >
-            Upload Hindi PDFs. Watch them become searchable knowledge graphs.
+            Upload Indic PDFs. Watch them become searchable knowledge graphs.
             Ask complex, multi-hop questions and get answers grounded in
             citations and entity relationships — powered by hybrid vector and
             graph retrieval.
