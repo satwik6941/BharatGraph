@@ -61,7 +61,6 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:8080",
         "https://bharat-graph-nlp.vercel.app",
-        "https://bharatgraph-444344272640.asia-south2.run.app",
     ],
     allow_methods=["POST"],
     allow_headers=["*"],

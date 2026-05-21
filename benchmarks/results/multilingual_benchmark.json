@@ -1,0 +1,69 @@
+{
+  "run_at": "2026-05-21T20:32:00.745135",
+  "corpus_stats": {
+    "hindi": {
+      "estimated_chunks": 420,
+      "documents": 12,
+      "script": "Devanagari",
+      "embedding_model_focus": "primary"
+    },
+    "marathi": {
+      "estimated_chunks": 180,
+      "documents": 5,
+      "script": "Devanagari",
+      "embedding_model_focus": "secondary"
+    },
+    "telugu": {
+      "estimated_chunks": 140,
+      "documents": 4,
+      "script": "Telugu",
+      "embedding_model_focus": "secondary"
+    }
+  },
+  "lang_results": {
+    "hindi": {
+      "hit_at_1": 0.667,
+      "hit_at_5": 0.833,
+      "hit_at_10": 0.889,
+      "mrr": 0.741,
+      "ndcg_10": 0.831,
+      "avg_score": 0.772,
+      "lang_detect_acc": 0.978,
+      "embedding_coverage": 0.994
+    },
+    "marathi": {
+      "hit_at_1": 0.611,
+      "hit_at_5": 0.778,
+      "hit_at_10": 0.833,
+      "mrr": 0.689,
+      "ndcg_10": 0.772,
+      "avg_score": 0.741,
+      "lang_detect_acc": 0.961,
+      "embedding_coverage": 0.989
+    },
+    "telugu": {
+      "hit_at_1": 0.556,
+      "hit_at_5": 0.722,
+      "hit_at_10": 0.778,
+      "mrr": 0.634,
+      "ndcg_10": 0.714,
+      "avg_score": 0.703,
+      "lang_detect_acc": 0.944,
+      "embedding_coverage": 0.981
+    }
+  },
+  "baselines": {
+    "BM25 (Pyserini)": {
+      "ndcg_10": 0.414,
+      "r_100": 0.742
+    },
+    "mContriever-msmarco": {
+      "ndcg_10": 0.453,
+      "r_100": 0.781
+    },
+    "mDPR (fine-tuned on MIRACL)": {
+      "ndcg_10": 0.601,
+      "r_100": 0.872
+    }
+  }
+}

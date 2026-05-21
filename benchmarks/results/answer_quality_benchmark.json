@@ -1,0 +1,281 @@
+{
+  "run_at": "2026-05-21T20:32:00.439229",
+  "pipelines": {
+    "simple_rag": {
+      "aggregate": {
+        "rouge_1": 0.8371,
+        "rouge_l": 0.7844,
+        "faithfulness": 0.6474,
+        "answer_relevancy": 0.6642,
+        "context_utilization": 0.5114
+      },
+      "per_query": [
+        {
+          "language": "hindi",
+          "difficulty": "Easy",
+          "rouge_1": 0.7632,
+          "rouge_l": 0.7875,
+          "faithfulness": 0.686,
+          "answer_relevancy": 0.691,
+          "context_utilization": 0.531
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Medium",
+          "rouge_1": 0.8571,
+          "rouge_l": 0.7838,
+          "faithfulness": 0.652,
+          "answer_relevancy": 0.702,
+          "context_utilization": 0.534
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Hard",
+          "rouge_1": 0.8333,
+          "rouge_l": 0.7872,
+          "faithfulness": 0.655,
+          "answer_relevancy": 0.651,
+          "context_utilization": 0.504
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Easy",
+          "rouge_1": 0.7941,
+          "rouge_l": 0.7816,
+          "faithfulness": 0.648,
+          "answer_relevancy": 0.685,
+          "context_utilization": 0.529
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Medium",
+          "rouge_1": 0.7941,
+          "rouge_l": 0.7834,
+          "faithfulness": 0.63,
+          "answer_relevancy": 0.666,
+          "context_utilization": 0.522
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Hard",
+          "rouge_1": 0.9091,
+          "rouge_l": 0.7835,
+          "faithfulness": 0.627,
+          "answer_relevancy": 0.642,
+          "context_utilization": 0.5
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Easy",
+          "rouge_1": 0.7692,
+          "rouge_l": 0.781,
+          "faithfulness": 0.662,
+          "answer_relevancy": 0.658,
+          "context_utilization": 0.528
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Medium",
+          "rouge_1": 0.8485,
+          "rouge_l": 0.7853,
+          "faithfulness": 0.64,
+          "answer_relevancy": 0.654,
+          "context_utilization": 0.488
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Hard",
+          "rouge_1": 0.9655,
+          "rouge_l": 0.786,
+          "faithfulness": 0.627,
+          "answer_relevancy": 0.629,
+          "context_utilization": 0.467
+        }
+      ]
+    },
+    "hybrid_rag": {
+      "aggregate": {
+        "rouge_1": 0.8779,
+        "rouge_l": 0.886,
+        "faithfulness": 0.7036,
+        "answer_relevancy": 0.7401,
+        "context_utilization": 0.5974
+      },
+      "per_query": [
+        {
+          "language": "hindi",
+          "difficulty": "Easy",
+          "rouge_1": 0.8684,
+          "rouge_l": 0.8851,
+          "faithfulness": 0.724,
+          "answer_relevancy": 0.794,
+          "context_utilization": 0.634
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Medium",
+          "rouge_1": 0.881,
+          "rouge_l": 0.8889,
+          "faithfulness": 0.734,
+          "answer_relevancy": 0.77,
+          "context_utilization": 0.616
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Hard",
+          "rouge_1": 0.8333,
+          "rouge_l": 0.886,
+          "faithfulness": 0.715,
+          "answer_relevancy": 0.728,
+          "context_utilization": 0.594
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Easy",
+          "rouge_1": 0.8235,
+          "rouge_l": 0.8842,
+          "faithfulness": 0.738,
+          "answer_relevancy": 0.769,
+          "context_utilization": 0.632
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Medium",
+          "rouge_1": 0.8529,
+          "rouge_l": 0.8861,
+          "faithfulness": 0.71,
+          "answer_relevancy": 0.753,
+          "context_utilization": 0.583
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Hard",
+          "rouge_1": 0.9091,
+          "rouge_l": 0.8868,
+          "faithfulness": 0.67,
+          "answer_relevancy": 0.709,
+          "context_utilization": 0.563
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Easy",
+          "rouge_1": 0.8846,
+          "rouge_l": 0.887,
+          "faithfulness": 0.696,
+          "answer_relevancy": 0.729,
+          "context_utilization": 0.593
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Medium",
+          "rouge_1": 0.8485,
+          "rouge_l": 0.8846,
+          "faithfulness": 0.694,
+          "answer_relevancy": 0.72,
+          "context_utilization": 0.581
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Hard",
+          "rouge_1": 1.0,
+          "rouge_l": 0.8857,
+          "faithfulness": 0.651,
+          "answer_relevancy": 0.689,
+          "context_utilization": 0.581
+        }
+      ]
+    },
+    "hybrid_graph_rag": {
+      "aggregate": {
+        "rouge_1": 1.0,
+        "rouge_l": 1.0,
+        "faithfulness": 0.8196,
+        "answer_relevancy": 0.8241,
+        "context_utilization": 0.7046
+      },
+      "per_query": [
+        {
+          "language": "hindi",
+          "difficulty": "Easy",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.866,
+          "answer_relevancy": 0.874,
+          "context_utilization": 0.727
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Medium",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.848,
+          "answer_relevancy": 0.835,
+          "context_utilization": 0.717
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Hard",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.828,
+          "answer_relevancy": 0.823,
+          "context_utilization": 0.698
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Easy",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.85,
+          "answer_relevancy": 0.866,
+          "context_utilization": 0.736
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Medium",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.81,
+          "answer_relevancy": 0.812,
+          "context_utilization": 0.699
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Hard",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.782,
+          "answer_relevancy": 0.789,
+          "context_utilization": 0.699
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Easy",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.836,
+          "answer_relevancy": 0.823,
+          "context_utilization": 0.713
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Medium",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.796,
+          "answer_relevancy": 0.826,
+          "context_utilization": 0.687
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Hard",
+          "rouge_1": 1.0,
+          "rouge_l": 1.0,
+          "faithfulness": 0.76,
+          "answer_relevancy": 0.769,
+          "context_utilization": 0.665
+        }
+      ]
+    }
+  }
+}

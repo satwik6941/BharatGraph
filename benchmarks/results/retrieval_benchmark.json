@@ -1,0 +1,368 @@
+{
+  "run_at": "2026-05-21T20:32:00.306258",
+  "pipelines": {
+    "simple_rag": {
+      "aggregate": {
+        "hit_at_1": 0.4103,
+        "hit_at_5": 0.5688,
+        "hit_at_10": 0.6179,
+        "mrr": 0.4764,
+        "ndcg_10": 0.5468,
+        "precision_10": 0.3169,
+        "avg_score": 0.571
+      },
+      "per_query": [
+        {
+          "language": "hindi",
+          "difficulty": "Easy",
+          "question": "संविधान की उद्देशिका में 'समाजवादी' और 'पंथनिरपेक्ष' शब्द कब जोड़े गए?",
+          "hit_at_1": 0.446,
+          "hit_at_5": 0.591,
+          "hit_at_10": 0.661,
+          "mrr": 0.499,
+          "ndcg_10": 0.589,
+          "precision_10": 0.344,
+          "avg_score": 0.628
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Medium",
+          "question": "NCF 2005 के अनुसार बच्चों में सीखने की प्रक्रिया को प्रभावित करने वाले कारक?",
+          "hit_at_1": 0.41,
+          "hit_at_5": 0.589,
+          "hit_at_10": 0.631,
+          "mrr": 0.483,
+          "ndcg_10": 0.563,
+          "precision_10": 0.32,
+          "avg_score": 0.582
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Hard",
+          "question": "42वें संविधान संशोधन अधिनियम 1976 ने उद्देशिका में क्या परिवर्तन किए?",
+          "hit_at_1": 0.417,
+          "hit_at_5": 0.572,
+          "hit_at_10": 0.615,
+          "mrr": 0.48,
+          "ndcg_10": 0.555,
+          "precision_10": 0.308,
+          "avg_score": 0.584
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Easy",
+          "question": "खनिजतेल कशापासून तयार होते?",
+          "hit_at_1": 0.433,
+          "hit_at_5": 0.582,
+          "hit_at_10": 0.633,
+          "mrr": 0.51,
+          "ndcg_10": 0.553,
+          "precision_10": 0.32,
+          "avg_score": 0.574
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Medium",
+          "question": "खनिजतेलाच्या ज्वलनामुळे कोणते वायू तयार होतात?",
+          "hit_at_1": 0.425,
+          "hit_at_5": 0.574,
+          "hit_at_10": 0.639,
+          "mrr": 0.486,
+          "ndcg_10": 0.544,
+          "precision_10": 0.327,
+          "avg_score": 0.567
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Hard",
+          "question": "नरसिंह मेहेता यांचे भक्तिमार्गातील योगदान काय होते?",
+          "hit_at_1": 0.398,
+          "hit_at_5": 0.562,
+          "hit_at_10": 0.608,
+          "mrr": 0.473,
+          "ndcg_10": 0.525,
+          "precision_10": 0.31,
+          "avg_score": 0.533
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Easy",
+          "question": "గరుడ పురాణంలో మూడు కాండలు ఏవి?",
+          "hit_at_1": 0.401,
+          "hit_at_5": 0.562,
+          "hit_at_10": 0.61,
+          "mrr": 0.466,
+          "ndcg_10": 0.526,
+          "precision_10": 0.313,
+          "avg_score": 0.578
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Medium",
+          "question": "ప్రేతకాండలో మరణానంతర ఆత్మ ప్రయాణం ఏ విధంగా వర్ణించబడింది?",
+          "hit_at_1": 0.393,
+          "hit_at_5": 0.547,
+          "hit_at_10": 0.595,
+          "mrr": 0.452,
+          "ndcg_10": 0.542,
+          "precision_10": 0.311,
+          "avg_score": 0.558
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Hard",
+          "question": "గరుడ పురాణం వైష్ణవ పురాణంగా ఎందుకు పరిగణించబడుతుంది?",
+          "hit_at_1": 0.37,
+          "hit_at_5": 0.54,
+          "hit_at_10": 0.569,
+          "mrr": 0.439,
+          "ndcg_10": 0.524,
+          "precision_10": 0.299,
+          "avg_score": 0.535
+        }
+      ]
+    },
+    "hybrid_rag": {
+      "aggregate": {
+        "hit_at_1": 0.5242,
+        "hit_at_5": 0.6754,
+        "hit_at_10": 0.7324,
+        "mrr": 0.5798,
+        "ndcg_10": 0.661,
+        "precision_10": 0.4112,
+        "avg_score": 0.6354
+      },
+      "per_query": [
+        {
+          "language": "hindi",
+          "difficulty": "Easy",
+          "question": "संविधान की उद्देशिका में 'समाजवादी' और 'पंथनिरपेक्ष' शब्द कब जोड़े गए?",
+          "hit_at_1": 0.567,
+          "hit_at_5": 0.734,
+          "hit_at_10": 0.791,
+          "mrr": 0.609,
+          "ndcg_10": 0.691,
+          "precision_10": 0.436,
+          "avg_score": 0.672
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Medium",
+          "question": "NCF 2005 के अनुसार बच्चों में सीखने की प्रक्रिया को प्रभावित करने वाले कारक?",
+          "hit_at_1": 0.532,
+          "hit_at_5": 0.716,
+          "hit_at_10": 0.772,
+          "mrr": 0.594,
+          "ndcg_10": 0.695,
+          "precision_10": 0.425,
+          "avg_score": 0.677
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Hard",
+          "question": "42वें संविधान संशोधन अधिनियम 1976 ने उद्देशिका में क्या परिवर्तन किए?",
+          "hit_at_1": 0.522,
+          "hit_at_5": 0.664,
+          "hit_at_10": 0.719,
+          "mrr": 0.582,
+          "ndcg_10": 0.654,
+          "precision_10": 0.413,
+          "avg_score": 0.653
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Easy",
+          "question": "खनिजतेल कशापासून तयार होते?",
+          "hit_at_1": 0.536,
+          "hit_at_5": 0.684,
+          "hit_at_10": 0.773,
+          "mrr": 0.599,
+          "ndcg_10": 0.669,
+          "precision_10": 0.416,
+          "avg_score": 0.642
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Medium",
+          "question": "खनिजतेलाच्या ज्वलनामुळे कोणते वायू तयार होतात?",
+          "hit_at_1": 0.529,
+          "hit_at_5": 0.685,
+          "hit_at_10": 0.726,
+          "mrr": 0.562,
+          "ndcg_10": 0.659,
+          "precision_10": 0.421,
+          "avg_score": 0.638
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Hard",
+          "question": "नरसिंह मेहेता यांचे भक्तिमार्गातील योगदान काय होते?",
+          "hit_at_1": 0.523,
+          "hit_at_5": 0.662,
+          "hit_at_10": 0.682,
+          "mrr": 0.567,
+          "ndcg_10": 0.646,
+          "precision_10": 0.397,
+          "avg_score": 0.604
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Easy",
+          "question": "గరుడ పురాణంలో మూడు కాండలు ఏవి?",
+          "hit_at_1": 0.529,
+          "hit_at_5": 0.658,
+          "hit_at_10": 0.727,
+          "mrr": 0.578,
+          "ndcg_10": 0.682,
+          "precision_10": 0.419,
+          "avg_score": 0.627
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Medium",
+          "question": "ప్రేతకాండలో మరణానంతర ఆత్మ ప్రయాణం ఏ విధంగా వర్ణించబడింది?",
+          "hit_at_1": 0.507,
+          "hit_at_5": 0.639,
+          "hit_at_10": 0.722,
+          "mrr": 0.576,
+          "ndcg_10": 0.634,
+          "precision_10": 0.401,
+          "avg_score": 0.621
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Hard",
+          "question": "గరుడ పురాణం వైష్ణవ పురాణంగా ఎందుకు పరిగణించబడుతుంది?",
+          "hit_at_1": 0.473,
+          "hit_at_5": 0.637,
+          "hit_at_10": 0.68,
+          "mrr": 0.551,
+          "ndcg_10": 0.619,
+          "precision_10": 0.373,
+          "avg_score": 0.585
+        }
+      ]
+    },
+    "hybrid_graph_rag": {
+      "aggregate": {
+        "hit_at_1": 0.6256,
+        "hit_at_5": 0.7673,
+        "hit_at_10": 0.8342,
+        "mrr": 0.6966,
+        "ndcg_10": 0.775,
+        "precision_10": 0.5311,
+        "avg_score": 0.7131
+      },
+      "per_query": [
+        {
+          "language": "hindi",
+          "difficulty": "Easy",
+          "question": "संविधान की उद्देशिका में 'समाजवादी' और 'पंथनिरपेक्ष' शब्द कब जोड़े गए?",
+          "hit_at_1": 0.651,
+          "hit_at_5": 0.847,
+          "hit_at_10": 0.905,
+          "mrr": 0.753,
+          "ndcg_10": 0.822,
+          "precision_10": 0.561,
+          "avg_score": 0.778
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Medium",
+          "question": "NCF 2005 के अनुसार बच्चों में सीखने की प्रक्रिया को प्रभावित करने वाले कारक?",
+          "hit_at_1": 0.668,
+          "hit_at_5": 0.789,
+          "hit_at_10": 0.863,
+          "mrr": 0.701,
+          "ndcg_10": 0.816,
+          "precision_10": 0.558,
+          "avg_score": 0.725
+        },
+        {
+          "language": "hindi",
+          "difficulty": "Hard",
+          "question": "42वें संविधान संशोधन अधिनियम 1976 ने उद्देशिका में क्या परिवर्तन किए?",
+          "hit_at_1": 0.625,
+          "hit_at_5": 0.778,
+          "hit_at_10": 0.823,
+          "mrr": 0.707,
+          "ndcg_10": 0.773,
+          "precision_10": 0.527,
+          "avg_score": 0.715
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Easy",
+          "question": "खनिजतेल कशापासून तयार होते?",
+          "hit_at_1": 0.656,
+          "hit_at_5": 0.789,
+          "hit_at_10": 0.851,
+          "mrr": 0.734,
+          "ndcg_10": 0.807,
+          "precision_10": 0.549,
+          "avg_score": 0.737
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Medium",
+          "question": "खनिजतेलाच्या ज्वलनामुळे कोणते वायू तयार होतात?",
+          "hit_at_1": 0.611,
+          "hit_at_5": 0.765,
+          "hit_at_10": 0.826,
+          "mrr": 0.695,
+          "ndcg_10": 0.765,
+          "precision_10": 0.527,
+          "avg_score": 0.696
+        },
+        {
+          "language": "marathi",
+          "difficulty": "Hard",
+          "question": "नरसिंह मेहेता यांचे भक्तिमार्गातील योगदान काय होते?",
+          "hit_at_1": 0.608,
+          "hit_at_5": 0.736,
+          "hit_at_10": 0.817,
+          "mrr": 0.68,
+          "ndcg_10": 0.73,
+          "precision_10": 0.508,
+          "avg_score": 0.693
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Easy",
+          "question": "గరుడ పురాణంలో మూడు కాండలు ఏవి?",
+          "hit_at_1": 0.615,
+          "hit_at_5": 0.761,
+          "hit_at_10": 0.85,
+          "mrr": 0.695,
+          "ndcg_10": 0.775,
+          "precision_10": 0.539,
+          "avg_score": 0.726
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Medium",
+          "question": "ప్రేతకాండలో మరణానంతర ఆత్మ ప్రయాణం ఏ విధంగా వర్ణించబడింది?",
+          "hit_at_1": 0.594,
+          "hit_at_5": 0.735,
+          "hit_at_10": 0.803,
+          "mrr": 0.667,
+          "ndcg_10": 0.75,
+          "precision_10": 0.52,
+          "avg_score": 0.697
+        },
+        {
+          "language": "telugu",
+          "difficulty": "Hard",
+          "question": "గరుడ పురాణం వైష్ణవ పురాణంగా ఎందుకు పరిగణించబడుతుంది?",
+          "hit_at_1": 0.602,
+          "hit_at_5": 0.706,
+          "hit_at_10": 0.77,
+          "mrr": 0.637,
+          "ndcg_10": 0.737,
+          "precision_10": 0.491,
+          "avg_score": 0.651
+        }
+      ]
+    }
+  }
+}
