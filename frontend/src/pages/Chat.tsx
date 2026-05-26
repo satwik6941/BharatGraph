@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Send, Sparkles, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Loader2, FileText, Construction } from "lucide-react";
+
+const BACKEND_ACTIVE = false;
 
 type Stage = "ready" | "thinking" | "answered";
 
@@ -85,7 +87,7 @@ const Chat = () => {
     }
   };
 
-  const canType = stage !== "thinking";
+  const canType = stage !== "thinking" && BACKEND_ACTIVE;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -104,9 +106,9 @@ const Chat = () => {
             BharatGraph · Live Demo
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-accent animate-pulse-glow" />
+            <span className={`h-2 w-2 rounded-full ${BACKEND_ACTIVE ? "bg-accent animate-pulse-glow" : "bg-destructive/70"}`} />
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Hybrid Graph-RAG
+              {BACKEND_ACTIVE ? "Hybrid Graph-RAG" : "Backend Offline"}
             </span>
           </div>
         </div>
@@ -128,6 +130,19 @@ const Chat = () => {
               </span>
             </div>
 
+            {/* Offline banner */}
+            {!BACKEND_ACTIVE && (
+              <div className="flex items-start gap-3 border-b border-destructive/20 bg-destructive/5 px-5 py-3 flex-shrink-0">
+                <Construction className="h-4 w-4 text-destructive/70 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-destructive/80 uppercase tracking-wide">Backend Offline — Under Expansion</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    The GCP backend is currently inactive as BharatGraph is being expanded to support additional Indian languages and document types. The live query interface will be restored upon redeployment. Full source code and benchmark results are available on GitHub.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Chat body */}
             <div className="p-6 flex-1 overflow-y-auto min-h-[420px] flex flex-col gap-6">
 
@@ -135,14 +150,29 @@ const Chat = () => {
               {messages.length === 0 && (
                 <div className="m-auto text-center max-w-sm flex flex-col items-center justify-center h-full">
                   <div className="mx-auto h-12 w-12 rounded-full bg-secondary flex items-center justify-center mb-4">
-                    <Sparkles className="h-5 w-5 text-muted-foreground" />
+                    {BACKEND_ACTIVE
+                      ? <Sparkles className="h-5 w-5 text-muted-foreground" />
+                      : <Construction className="h-5 w-5 text-muted-foreground" />
+                    }
                   </div>
-                  <p className="font-display text-xl text-foreground/70">Ask anything</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Type a question in Hindi, Marathi, or Telugu. BharatGraph will
-                    detect the language automatically and retrieve answers using
-                    hybrid vector and graph search.
-                  </p>
+                  {BACKEND_ACTIVE ? (
+                    <>
+                      <p className="font-display text-xl text-foreground/70">Ask anything</p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Type a question in Hindi, Marathi, or Telugu. BharatGraph will
+                        detect the language automatically and retrieve answers using
+                        hybrid vector and graph search.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-display text-xl text-foreground/70">Demo Temporarily Unavailable</p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        The backend is currently offline while the project is under active expansion.
+                        Check back soon — or explore the benchmark results and source code on GitHub.
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -257,7 +287,7 @@ const Chat = () => {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   disabled={!canType}
-                  placeholder="अपना प्रश्न यहाँ लिखें… (Type your question)"
+                  placeholder={BACKEND_ACTIVE ? "अपना प्रश्न यहाँ लिखें… (Type your question)" : "Backend offline — query unavailable"}
                   className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none font-devanagari disabled:cursor-not-allowed"
                 />
                 <button
